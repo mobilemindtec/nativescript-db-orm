@@ -134,7 +134,7 @@ function Model(){
 
 }
 
-Model.prototype.save = function(table, attrs, done){
+Model.prototype._save = function(table, attrs, done){
   var args = []
   var names = ""
   var values = ""
@@ -179,7 +179,7 @@ Model.prototype.save = function(table, attrs, done){
   })   
 }
 
-Model.prototype.update = function(table, attrs, done){
+Model.prototype._update = function(table, attrs, done){
   var args = []
   var names = ""
 
@@ -217,14 +217,14 @@ Model.prototype.update = function(table, attrs, done){
   })   
 }
 
-Model.prototype.remove = function(table, attrs, done){
+Model.prototype._remove = function(table, attrs, done){
   execute("delete from " + table + " where id = ?", [attrs['id']], function(err){
     say('delete done in model. err=' + err)
     done(err)
   })     
 }
 
-Model.prototype.get = function(table, attrs, conditions, done){
+Model.prototype._get = function(table, attrs, conditions, done){
   var names = ""
   var cons = ""
   var args = []
@@ -245,7 +245,7 @@ Model.prototype.get = function(table, attrs, conditions, done){
   get(" select " + names + " from " + table + " where " + cons, args, done)
 }
 
-Model.prototype.all = function(table, attrs, conditions, done){
+Model.prototype._all = function(table, attrs, conditions, done){
   var names = ""
   var cons = ""
   var sql = ""
@@ -271,24 +271,107 @@ Model.prototype.all = function(table, attrs, conditions, done){
   all(sql, args, done)
 }
 
-Model.prototype.selectAll = function(query, args, done){
+Model.prototype._selectAll = function(query, args, done){
   all(query, args, done)
 }
 
-Model.prototype.selectOne = function(query, args, done){
+Model.prototype._selectOne = function(query, args, done){
   get(query, args, done)
 }
 
 
-Model.prototype.init = function(_this, attrs){
+Model.prototype._init = function(_this, attrs){
   for(it in attrs)
     _this[it] = attrs[it]
 }  
 
-Model.prototype.prepare = function(_this, attrs){
+Model.prototype._prepare = function(_this, attrs){
   for(it in attrs)
     attrs[it] = _this[it]
 }  
+
+
+// implements
+
+Model.prototype.save = function(done){
+  var self = this
+  Model.prototype._prepare.call(this, this, this.attrs)
+  Model.prototype._save.call(this, this.tableName, this.attrs, function(err){
+    if(!err)
+      self['id'] = self.attrs['id']      
+    done(err)
+  })
+}
+
+
+Model.prototype.update = function(done){
+  Model.prototype._prepare.call(this, this, this.attrs)
+  Model.prototype._update.call(this, this.tableName, this.attrs, done)
+}
+
+Model.prototype.remove = function(done){    
+  Model.prototype._remove.call(this, this.tableName, this.attrs, done)
+}
+
+Model.prototype.get = function(id, done){
+  var self = this
+  Model.prototype._get.call(this, this.tableName, this.attrs, [{ col: 'id', 'op': '=', 'val': id }] , function(err, item){      
+    if(item){
+      opts = {}
+      var i = 0
+      for(it in self.attrs)
+        opts[it] = item[i++]      
+      done(new self.clazz(opts))
+    }
+    else
+      done(null)
+  })
+}
+
+Model.prototype.all = function(done){
+  var self = this
+  Model.prototype._all.call(this, this.tableName, this.attrs, null, function(err, items){
+    if(items){
+      console.log("###### select count " + self.tableName + "(" + items.length + ")")
+      var result = []
+      for(item in items){                 
+        var opts = {}
+        var i = 0          
+        for(it in self.attrs){          
+          opts[it] = items[item][i++]
+        }          
+        result.push(new self.clazz(opts))
+      }
+      done(result)      
+    }else{
+      console.log("###### select count " + self.tableName + "(0)")
+      done(null)
+    }
+  })
+},
+
+Model.prototype.each = function(each, done){
+  var self = this
+  Model.prototype._all.call(this, this.tableName, this.attrs, null, function(err, items){      
+    if(items){
+      console.log("###### select count " + self.tableName + "(" + items.length + ")")
+      var result = []
+      for(item in items){                 
+        var opts = {}
+        var i = 0          
+        for(it in self.attrs){
+          //console.log(it)
+          opts[it] = items[item][i++]
+        }          
+        each(new this.clazz(opts))
+      }    
+      done()      
+    }else{
+      console.log("###### select count " + self.tableName + "(0)")
+      done()
+    }
+  })
+}
 
 exports.DbChecker = DbChecker;
 exports.Model = Model;
