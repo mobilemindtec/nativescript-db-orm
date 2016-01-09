@@ -7,7 +7,7 @@ function DbChecker(){
 
 }
 
-DbChecker.prototype.createOrUpdate = function(reset, databaseName, models){
+DbChecker.prototype.createOrUpdate = function(reset, databaseName, models, done){
 
   dbName = databaseName
 
@@ -72,11 +72,18 @@ DbChecker.prototype.createOrUpdate = function(reset, databaseName, models){
 
         say('update database to version 1')
         db.version(1); // Sets the version to 1
+      
       }else{
         say('dont update database version')
       }
+
+      done()
     });
   });     
+}
+
+function Model(){
+
 }
 
 function extend(ChildClass, ParentClass) {
@@ -93,46 +100,51 @@ function say(message){
 function execute(sql, params, callback){
   new Sqlite(dbName, function(err, db) {
     
-    say('execute ' + sql)
+    say('execute ' + sql + "  values " + JSON.stringify(params))
 
     db.execSQL(sql, params, callback)
 
   });   
 }
 
+Model.prototype.executeNative = execute;
+
 function get(sql, params, callback){
   new Sqlite(dbName, function(err, db) {
     
-    say('execute ' + sql)
+    say('execute ' + sql + "  values " + JSON.stringify(params))
 
     db.get(sql, params, callback)
 
   });   
 }
 
+Model.prototype.getNative = get;
+
 function all(sql, params, callback){
   new Sqlite(dbName, function(err, db) {
     
-    say('execute ' + sql)
+    say('execute ' + sql + "  values " + JSON.stringify(params))
 
     db.all(sql, params, callback)
 
   });   
 }
 
+Model.prototype.allNative = all;
+
 function each(sql, params, rowCallback, finishedCallback){
   new Sqlite(dbName, function(err, db) {
     
-    say('execute ' + sql)
+    say('execute ' + sql + "  values " + JSON.stringify(params))
 
     db.each(sql, params, rowCallback, finishedCallback)
 
   });   
 }
 
-function Model(){
+Model.prototype.eachNative = each;
 
-}
 
 Model.prototype._save = function(table, attrs, done){
   var args = []
@@ -224,6 +236,18 @@ Model.prototype._remove = function(table, attrs, done){
   })     
 }
 
+Model.prototype._removeAll = function(table, done){
+  execute("delete from " + table, [], function(err){
+    say('delete all models done. err=' + err)
+    done(err)
+  })     
+}
+
+
+Model.prototype._count = function(table, done){
+  get("select count(id) from " + table, [], done)     
+}
+
 Model.prototype._get = function(table, attrs, conditions, done){
   var names = ""
   var cons = ""
@@ -290,6 +314,52 @@ Model.prototype._prepare = function(_this, attrs){
     attrs[it] = _this[it]
 }  
 
+Model.prototype._resultToJson = function(item, done){
+
+  say("Model.prototype._resultToJson")
+
+  if(item){
+    var opts = {}
+    var i = 0          
+    for(it in this.attrs){      
+      opts[it] = item[i++]
+    }    
+    return done(new this.clazz(opts))
+  }
+  done(undefined)
+}  
+
+Model.prototype._resultsToJson = function(items, done){
+
+  say("Model.prototype._resultsToJson")
+  
+  var results = []
+  if(items){
+    for(var j = 0; j < items.length; j++){
+
+      var item = items[j]
+      var opts = {}
+      var i = 0          
+      for(it in this.attrs){      
+        opts[it] = item[i++]
+      }    
+
+      results.push(new this.clazz(opts))
+    }
+
+    done(results)
+  }
+  done(undefined)
+}  
+
+Model.prototype._set = function(params){
+  for(it in params){    
+    this.attrs[it] = params[it]
+  }
+
+  Model.prototype._init.call(this, this, this.attrs)
+}
+
 
 // implements
 
@@ -313,9 +383,32 @@ Model.prototype.remove = function(done){
   Model.prototype._remove.call(this, this.tableName, this.attrs, done)
 }
 
+Model.prototype.removeAll = function(done){    
+  Model.prototype._removeAll.call(this, this.tableName, done)
+}
+
+Model.prototype.count = function(done){    
+  Model.prototype._count.call(this, this.tableName, done)
+}
+
 Model.prototype.get = function(id, done){
   var self = this
   Model.prototype._get.call(this, this.tableName, this.attrs, [{ col: 'id', 'op': '=', 'val': id }] , function(err, item){      
+    if(item){
+      opts = {}
+      var i = 0
+      for(it in self.attrs)
+        opts[it] = item[i++]      
+      done(new self.clazz(opts))
+    }
+    else
+      done(null)
+  })
+}
+
+Model.prototype.getByServerId = function(serverId, done){
+  var self = this
+  Model.prototype._get.call(this, this.tableName, this.attrs, [{ col: 'serverId', 'op': '=', 'val': serverId }] , function(err, item){      
     if(item){
       opts = {}
       var i = 0
