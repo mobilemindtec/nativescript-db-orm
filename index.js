@@ -1,10 +1,23 @@
 var Sqlite = require( "nativescript-sqlite" );
+var dbORM = require("./orm");
 var moment = require("moment")
 var debug = true
 var dbName 
 
 function DbChecker(){
 
+}
+
+function createDatabase (callback) {
+  new Sqlite(dbName, function(err, db) {
+    
+    if(err)
+      console.log("Erro ao conectar com o banco de dados. Detalhes: " + err)
+
+    callback(db)  
+
+    db.close()
+  })  
 }
 
 DbChecker.prototype.createOrUpdate = function(reset, databaseName, models, done){
@@ -17,7 +30,7 @@ DbChecker.prototype.createOrUpdate = function(reset, databaseName, models, done)
    Sqlite.deleteDatabase(dbName)
 
   // version checker
-  new Sqlite(dbName, function(err, db) {
+  createDatabase(function(db) {
     db.version(function(err, ver) {
 
       ver = parseInt(ver)
@@ -98,7 +111,7 @@ function say(message){
 }
 
 function execute(sql, params, callback){
-  new Sqlite(dbName, function(err, db) {
+  createDatabase(function(db) {
     
     say('execute ' + sql + "  values " + JSON.stringify(params))
 
@@ -110,7 +123,7 @@ function execute(sql, params, callback){
 Model.prototype.executeNative = execute;
 
 function get(sql, params, callback){
-  new Sqlite(dbName, function(err, db) {
+  createDatabase(function(db) {
     
     say('execute ' + sql + "  values " + JSON.stringify(params))
 
@@ -122,7 +135,7 @@ function get(sql, params, callback){
 Model.prototype.getNative = get;
 
 function all(sql, params, callback){
-  new Sqlite(dbName, function(err, db) {
+  createDatabase(function(db) {
     
     say('execute ' + sql + "  values " + JSON.stringify(params))
 
@@ -134,7 +147,7 @@ function all(sql, params, callback){
 Model.prototype.allNative = all;
 
 function each(sql, params, rowCallback, finishedCallback){
-  new Sqlite(dbName, function(err, db) {
+  createDatabase(function(db) {
     
     say('execute ' + sql + "  values " + JSON.stringify(params))
 
@@ -195,7 +208,8 @@ Model.prototype._update = function(table, attrs, done){
   var args = []
   var names = ""
 
-  
+  console.log("Model.prototype._update") 
+
   for(var i = 0; i < this.columns.length; i++){
 
     var it = this.columns[i]
@@ -203,8 +217,8 @@ Model.prototype._update = function(table, attrs, done){
     if(it.name == 'id')
       continue
 
-    names += it.name + ","
-    values += "?,"
+    names += it.name + " = ?,"
+    //values += "?,"
 
     if(it.type == 'date'){
       if(attrs[it.name]){
@@ -223,7 +237,10 @@ Model.prototype._update = function(table, attrs, done){
   // remove last (,)
   names = names.substring(0, names.length-1)
 
-  execute("update " + table + " set " + names + " where id = ?", args, function(err){
+  var query = "update " + table + " set " + names + " where id = ?"
+  console.log("## execute " + query)
+
+  execute(query, args, function(err){
     say('update done in model. err=' + err)
     done(err)
   })   
@@ -369,7 +386,8 @@ Model.prototype.save = function(done){
   Model.prototype._save.call(this, this.tableName, this.attrs, function(err){
     if(!err)
       self['id'] = self.attrs['id']      
-    done(err)
+    if(done)
+      done(err)
   })
 }
 
@@ -442,6 +460,29 @@ Model.prototype.all = function(done){
     }
   })
 },
+
+Model.prototype.filter = function(conditions, done){
+  var self = this
+  Model.prototype._all.call(this, this.tableName, this.attrs, conditions, function(err, items){
+    if(items){
+      console.log("###### select count " + self.tableName + "(" + items.length + ")")
+      var result = []
+      for(item in items){                 
+        var opts = {}
+        var i = 0          
+        for(it in self.attrs){          
+          opts[it] = items[item][i++]
+        }          
+        result.push(new self.clazz(opts))
+      }
+      done(result)      
+    }else{
+      console.log("###### select count " + self.tableName + "(0)")
+      done(null)
+    }
+  })
+},
+
 
 Model.prototype.each = function(each, done){
   var self = this
