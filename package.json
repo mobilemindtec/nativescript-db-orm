@@ -1,2 +1,4 @@
 { "name" : "nativescript-db-orm",
-  "main" : "db-orm.js" }
+  "main" : "index.js",
+  "version": "0.0.1"
+}
