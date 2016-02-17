@@ -1,4 +1,8 @@
 { "name" : "nativescript-db-orm",
+<<<<<<< HEAD
   "main" : "index.js",
   "version": "0.0.1"
 }
+=======
+  "main" : "index.js" }
+>>>>>>> a3f686f1c421ed1f9d4ff7968f28cea82c90a905

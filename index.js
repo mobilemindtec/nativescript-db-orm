@@ -24,8 +24,7 @@ DbChecker.prototype.createOrUpdate = function(reset, databaseName, models, done)
 
   dbName = databaseName
 
-  console.log("## createOrUpdate")
-
+  say("## database reset=" + reset)
   say('call database version method')
 
   if(reset)
@@ -61,6 +60,8 @@ DbChecker.prototype.createOrUpdate = function(reset, databaseName, models, done)
 
               if(column.type == 'string' || column.type == 'date'){
                   table += " text"
+              }else if(column.type == 'boolean'){
+                table += " int"
               }else{
                 table += " " + column.type
               }
@@ -178,11 +179,13 @@ Model.prototype._save = function(table, attrs, done){
 
     if(it.type == 'date'){
       if(attrs[it.name]){
-        var val = attrs[it.name] ? moment(attrs[it.name]).format('YYYY-MM-DD HH:mm:ss.SSS') : null
+        var val = attrs[it.name] && moment(attrs[it.name]).isValid() ? moment(attrs[it.name]).format('YYYY-MM-DD HH:mm:ss.SSS') : null
         args.push(val)
       }else{
         args.push(null)        
       }
+    }else if(it.type == 'boolean'){
+      args.push(attrs[it.name] ? 1 : 0)
     }else{ 
       args.push(attrs[it.name] || null)
     }
@@ -224,11 +227,13 @@ Model.prototype._update = function(table, attrs, done){
 
     if(it.type == 'date'){
       if(attrs[it.name]){
-        var val = attrs[it.name] ? moment(attrs[it.name]).format('YYYY-MM-DD HH:mm:ss.SSS') : null
+        var val = attrs[it.name] && moment(attrs[it.name]).isValid() ? moment(attrs[it.name]).format('YYYY-MM-DD HH:mm:ss.SSS') : null
         args.push(val)
       }else{
         args.push(null)        
       }
+    }else if(it.type == 'boolean'){
+      args.push(attrs[it.name] ? 1 : 0)
     }else{ 
       args.push(attrs[it.name] || null)
     }
@@ -349,7 +354,9 @@ Model.prototype._resultToJson = function(item, done){
 
       if(it.type == 'date' &&  value && moment(value, 'YYYY-MM-DD HH:mm:ss.SSS').isValid())
         opts[it.name] = moment(value, 'YYYY-MM-DD HH:mm:ss.SSS').toDate()
-      else   
+      else if(it.type == 'boolean')   
+        opts[it.name] = value && value == 1 ? true : false
+      else
         opts[it.name] = value
 
     }    
@@ -361,7 +368,7 @@ Model.prototype._resultToJson = function(item, done){
 
 Model.prototype._resultsToJson = function(items, done){
 
-  say("Model.prototype._resultsToJson items=" + items + ", items.length=" + items.length)
+  say("Model.prototype._resultsToJson")
   
   var results = []
   if(items){
@@ -370,6 +377,7 @@ Model.prototype._resultsToJson = function(items, done){
       var item = items[j]
       var opts = {}
       var i = 0          
+
       for(var k = 0; k < this.columns.length; k++){
 
         var it = this.columns[k]
@@ -379,6 +387,8 @@ Model.prototype._resultsToJson = function(items, done){
 
         if(it.type == 'date' &&  value && moment(value, 'YYYY-MM-DD HH:mm:ss.SSS').isValid())
           opts[it.name] = moment(value, 'YYYY-MM-DD HH:mm:ss.SSS').toDate()
+        else if(it.type == 'boolean')   
+        opts[it.name] = value && value == 1 ? true : false
         else   
           opts[it.name] = value
 
@@ -387,7 +397,7 @@ Model.prototype._resultsToJson = function(items, done){
       results.push(new this.clazz(opts))
     }
 
-    return done(results)
+    return done(results)    
   }
   done(undefined)
 }  
