@@ -28,6 +28,7 @@ DbChecker.prototype.createOrUpdate = function(reset, databaseName, models, done)
 
   dbName = databaseName
 
+  say("## database reset=" + reset)
   say('call database version method')
 
   if(reset)
@@ -63,6 +64,8 @@ DbChecker.prototype.createOrUpdate = function(reset, databaseName, models, done)
 
               if(column.type == 'string' || column.type == 'date'){
                   table += " text"
+              }else if(column.type == 'boolean'){
+                table += " int"
               }else{
                 table += " " + column.type
               }
@@ -180,11 +183,13 @@ Model.prototype._save = function(table, attrs, done){
 
     if(it.type == 'date'){
       if(attrs[it.name]){
-        var val = moment(attrs[it.name]).format('yyyy-MM-dd hh:mm:ss.SSS')
+        var val = attrs[it.name] && moment(attrs[it.name]).isValid() ? moment(attrs[it.name]).format('YYYY-MM-DD HH:mm:ss.SSS') : null
         args.push(val)
       }else{
         args.push(null)        
       }
+    }else if(it.type == 'boolean'){
+      args.push(attrs[it.name] ? 1 : 0)
     }else{ 
       args.push(attrs[it.name] || null)
     }
@@ -226,11 +231,13 @@ Model.prototype._update = function(table, attrs, done){
 
     if(it.type == 'date'){
       if(attrs[it.name]){
-        var val = moment(attrs[it.name]).format('yyyy-MM-dd hh:mm:ss.SSS')
+        var val = attrs[it.name] && moment(attrs[it.name]).isValid() ? moment(attrs[it.name]).format('YYYY-MM-DD HH:mm:ss.SSS') : null
         args.push(val)
       }else{
         args.push(null)        
       }
+    }else if(it.type == 'boolean'){
+      args.push(attrs[it.name] ? 1 : 0)
     }else{ 
       args.push(attrs[it.name] || null)
     }
@@ -274,8 +281,8 @@ Model.prototype._get = function(table, attrs, conditions, done){
   var cons = ""
   var args = []
 
-  for(it in attrs)
-    names += it + ","    
+  for(var i = 0; i < this.columns.length; i++)
+    names += this.columns[i].name + ","    
   
   names = names.substring(0, names.length-1)
 
@@ -296,8 +303,8 @@ Model.prototype._all = function(table, attrs, conditions, done){
   var sql = ""
   var args = []
 
-  for(it in attrs)
-    names += it + ","    
+  for(var i = 0; i < this.columns.length; i++)
+    names += this.columns[i].name + ","    
   
   names = names.substring(0, names.length-1)
 
@@ -342,9 +349,22 @@ Model.prototype._resultToJson = function(item, done){
   if(item){
     var opts = {}
     var i = 0          
-    for(it in this.attrs){      
-      opts[it] = item[i++]
+    for(var j = 0; j < this.columns.length; j++){
+
+      var it = this.columns[j]
+      var value = item[i++]
+
+      //console.log("## it.type=" + it.type + ", it.name=" + it.name + ", value=" + value)
+
+      if(it.type == 'date' &&  value && moment(value, 'YYYY-MM-DD HH:mm:ss.SSS').isValid())
+        opts[it.name] = moment(value, 'YYYY-MM-DD HH:mm:ss.SSS').toDate()
+      else if(it.type == 'boolean')   
+        opts[it.name] = value && value == 1 ? true : false
+      else
+        opts[it.name] = value
+
     }    
+
     return done(new this.clazz(opts))
   }
   done(undefined)
@@ -361,14 +381,27 @@ Model.prototype._resultsToJson = function(items, done){
       var item = items[j]
       var opts = {}
       var i = 0          
-      for(it in this.attrs){      
-        opts[it] = item[i++]
+
+      for(var k = 0; k < this.columns.length; k++){
+
+        var it = this.columns[k]
+        var value = item[i++]
+
+        //console.log("## it.name=" + it.name + ", it.type=" + it.type + ", value=" + value)
+
+        if(it.type == 'date' &&  value && moment(value, 'YYYY-MM-DD HH:mm:ss.SSS').isValid())
+          opts[it.name] = moment(value, 'YYYY-MM-DD HH:mm:ss.SSS').toDate()
+        else if(it.type == 'boolean')   
+        opts[it.name] = value && value == 1 ? true : false
+        else   
+          opts[it.name] = value
+
       }    
 
       results.push(new this.clazz(opts))
     }
 
-    done(results)
+    return done(results)    
   }
   done(undefined)
 }  
@@ -416,13 +449,8 @@ Model.prototype.count = function(done){
 Model.prototype.get = function(id, done){
   var self = this
   Model.prototype._get.call(this, this.tableName, this.attrs, [{ col: 'id', 'op': '=', 'val': id }] , function(err, item){      
-    if(item){
-      opts = {}
-      var i = 0
-      for(it in self.attrs)
-        opts[it] = item[i++]      
-      done(new self.clazz(opts))
-    }
+    if(item)
+      Model.prototype._resultToJson.call(self, item, done)    
     else
       done(null)
   })
@@ -431,13 +459,8 @@ Model.prototype.get = function(id, done){
 Model.prototype.getByServerId = function(serverId, done){
   var self = this
   Model.prototype._get.call(this, this.tableName, this.attrs, [{ col: 'serverId', 'op': '=', 'val': serverId }] , function(err, item){      
-    if(item){
-      opts = {}
-      var i = 0
-      for(it in self.attrs)
-        opts[it] = item[i++]      
-      done(new self.clazz(opts))
-    }
+    if(item)
+      Model.prototype._resultToJson.call(self, item, done)    
     else
       done(null)
   })
@@ -447,17 +470,8 @@ Model.prototype.all = function(done){
   var self = this
   Model.prototype._all.call(this, this.tableName, this.attrs, null, function(err, items){
     if(items){
-      debug("###### select count " + self.tableName + "(" + items.length + ")")
-      var result = []
-      for(item in items){                 
-        var opts = {}
-        var i = 0          
-        for(it in self.attrs){          
-          opts[it] = items[item][i++]
-        }          
-        result.push(new self.clazz(opts))
-      }
-      done(result)      
+      console.log("###### select count " + self.tableName + "(" + items.length + ")")      
+      Model.prototype._resultsToJson.call(self, items, done)      
     }else{
       debug("###### select count " + self.tableName + "(0)")
       done(null)
@@ -469,17 +483,8 @@ Model.prototype.filter = function(conditions, done){
   var self = this
   Model.prototype._all.call(this, this.tableName, this.attrs, conditions, function(err, items){
     if(items){
-      debug("###### select count " + self.tableName + "(" + items.length + ")")
-      var result = []
-      for(item in items){                 
-        var opts = {}
-        var i = 0          
-        for(it in self.attrs){          
-          opts[it] = items[item][i++]
-        }          
-        result.push(new self.clazz(opts))
-      }
-      done(result)      
+      console.log("###### select count " + self.tableName + "(" + items.length + ")")
+      Model.prototype._resultsToJson.call(self, items, done)      
     }else{
       debug("###### select count " + self.tableName + "(0)")
       done(null)
@@ -492,18 +497,8 @@ Model.prototype.each = function(each, done){
   var self = this
   Model.prototype._all.call(this, this.tableName, this.attrs, null, function(err, items){      
     if(items){
-      debug("###### select count " + self.tableName + "(" + items.length + ")")
-      var result = []
-      for(item in items){                 
-        var opts = {}
-        var i = 0          
-        for(it in self.attrs){
-          //debug(it)
-          opts[it] = items[item][i++]
-        }          
-        each(new this.clazz(opts))
-      }    
-      done()      
+      console.log("###### select count " + self.tableName + "(" + items.length + ")")
+      Model.prototype._resultsToJson.call(self, items, done)      
     }else{
       debug("###### select count " + self.tableName + "(0)")
       done()
