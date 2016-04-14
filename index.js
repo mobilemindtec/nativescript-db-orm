@@ -1,8 +1,12 @@
 var Sqlite = require( "nativescript-sqlite" );
 var dbORM = require("./orm");
 var moment = require("moment")
-var debug = true
 var dbName 
+
+function debug(text){  
+  //console.log(text)
+}
+
 
 function DbChecker(){
 
@@ -12,7 +16,7 @@ function createDatabase (callback) {
   new Sqlite(dbName, function(err, db) {
     
     if(err)
-      console.log("Erro ao conectar com o banco de dados. Detalhes: " + err)
+      debug("Erro ao conectar com o banco de dados. Detalhes: " + err)
 
     callback(db)  
 
@@ -110,7 +114,7 @@ function extend(ChildClass, ParentClass) {
 
 function say(message){
   if(debug)
-    console.log("### " + message)
+    debug("### " + message)
 }
 
 function execute(sql, params, callback){
@@ -213,7 +217,7 @@ Model.prototype._update = function(table, attrs, done){
   var args = []
   var names = ""
 
-  console.log("Model.prototype._update") 
+  debug("Model.prototype._update") 
 
   for(var i = 0; i < this.columns.length; i++){
 
@@ -245,7 +249,7 @@ Model.prototype._update = function(table, attrs, done){
   names = names.substring(0, names.length-1)
 
   var query = "update " + table + " set " + names + " where id = ?"
-  console.log("## execute " + query)
+  debug("## execute " + query)
 
   execute(query, args, function(err){
     say('update done in model. err=' + err)
@@ -469,7 +473,7 @@ Model.prototype.all = function(done){
       console.log("###### select count " + self.tableName + "(" + items.length + ")")      
       Model.prototype._resultsToJson.call(self, items, done)      
     }else{
-      console.log("###### select count " + self.tableName + "(0)")
+      debug("###### select count " + self.tableName + "(0)")
       done(null)
     }
   })
@@ -482,7 +486,7 @@ Model.prototype.filter = function(conditions, done){
       console.log("###### select count " + self.tableName + "(" + items.length + ")")
       Model.prototype._resultsToJson.call(self, items, done)      
     }else{
-      console.log("###### select count " + self.tableName + "(0)")
+      debug("###### select count " + self.tableName + "(0)")
       done(null)
     }
   })
@@ -496,11 +500,12 @@ Model.prototype.each = function(each, done){
       console.log("###### select count " + self.tableName + "(" + items.length + ")")
       Model.prototype._resultsToJson.call(self, items, done)      
     }else{
-      console.log("###### select count " + self.tableName + "(0)")
+      debug("###### select count " + self.tableName + "(0)")
       done()
     }
   })
 }
+
 
 exports.DbChecker = DbChecker;
 exports.Model = Model;
