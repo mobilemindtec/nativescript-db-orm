@@ -342,7 +342,7 @@ Model.prototype._prepare = function(_this, attrs){
     attrs[it] = _this[it]
 }  
 
-Model.prototype._resultToJson = function(item, done){
+Model.prototype._resultToJson = function(item, done, onItemConverter){
 
   say("Model.prototype._resultToJson")
 
@@ -365,12 +365,17 @@ Model.prototype._resultToJson = function(item, done){
 
     }    
 
-    return done(new this.clazz(opts))
+    var itemConverted = new this.clazz(opts)
+    if(onItemConverter)
+      onItemConverter(item, itemConverted)
+    results.push(itemConverted)
+
+    return done(itemConverted)
   }
   done(undefined)
 }  
 
-Model.prototype._resultsToJson = function(items, done){
+Model.prototype._resultsToJson = function(items, done, onItemConverter){
 
   say("Model.prototype._resultsToJson")
   
@@ -398,13 +403,16 @@ Model.prototype._resultsToJson = function(items, done){
 
       }    
 
-      results.push(new this.clazz(opts))
+      var itemConverted = new this.clazz(opts)
+      if(onItemConverter)
+        onItemConverter(item, itemConverted)
+      results.push(itemConverted)
     }
 
     return done(results)    
   }
   done(undefined)
-}  
+} 
 
 Model.prototype._set = function(params){
   for(it in params){    
