@@ -368,7 +368,6 @@ Model.prototype._resultToJson = function(item, done, onItemConverter){
     var itemConverted = new this.clazz(opts)
     if(onItemConverter)
       onItemConverter(item, itemConverted)
-    results.push(itemConverted)
 
     return done(itemConverted)
   }
