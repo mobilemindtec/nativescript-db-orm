@@ -178,8 +178,7 @@ function each(sql, params, rowCallback, finishedCallback){
 
 Model.prototype.eachNative = each;
 
-
-Model.prototype._save = function(table, attrs, callback){
+Model.prototype._toInsertQuery = function(table, attrs){
   var args = []
   var names = ""
   var values = ""
@@ -236,18 +235,13 @@ Model.prototype._save = function(table, attrs, callback){
   names = names.substring(0, names.length-1)
   values = values.substring(0, values.length-1)
 
-  execute("insert into " + table + " (" + names + ") values (" + values + ")", args, function(err, id){
-    
-    if(!err)
-      attrs['id'] = id
-    
-    debug('save callback in model. err=' + err)
-
-    callback(err)
-  })   
+  return {
+    query: "insert into " + table + " (" + names + ") values (" + values + ")",
+    args: args
+  }
 }
 
-Model.prototype._update = function(table, attrs, callback){
+Model.prototype._toUpdateQuery = function(table, attrs){
   var args = []
   var names = ""
 
@@ -297,10 +291,32 @@ Model.prototype._update = function(table, attrs, callback){
   // remove last (,)
   names = names.substring(0, names.length-1)
 
-  var query = "update " + table + " set " + names + " where id = ?"
-  debug("## execute " + query)
+  return {
+    query: "update " + table + " set " + names + " where id = ?",
+    args: args
+  }  
+}
 
-  execute(query, args, function(err){
+Model.prototype._save = function(table, attrs, callback){
+
+  var result = this._toInsertQuery(table, attrs)
+  
+  execute(result.query, result.args, function(err, id){
+    
+    if(!err)
+      attrs['id'] = id
+    
+    debug('save callback in model. err=' + err)
+
+    callback(err)
+  })   
+}
+
+Model.prototype._update = function(table, attrs, callback){
+ 
+  var result = this._toUpdateQuery(table, attrs)
+
+  execute(result.query, result.args, function(err){
     debug('update callback in model. err=' + err)
     callback(err)
   })   
@@ -483,6 +499,15 @@ Model.prototype.save = function(callback){
   })
 }
 
+Model.prototype.toInsertQuery = function(callback){  
+  Model.prototype._prepare.call(this, this, this.attrs)
+  return Model.prototype._toInsertQuery.call(this, this.tableName, this.attrs)
+}
+
+Model.prototype.toUpdateQuery = function(callback){  
+  Model.prototype._prepare.call(this, this, this.attrs)
+  return Model.prototype._toUpdateQuery.call(this, this.tableName, this.attrs)
+}
 
 Model.prototype.update = function(callback){
   Model.prototype._prepare.call(this, this, this.attrs)
