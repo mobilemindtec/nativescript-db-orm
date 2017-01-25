@@ -99,9 +99,9 @@ DbChecker.prototype.createOrUpdate = function(reset, databaseName, models, callb
           debug(tables[it])
           db.execSQL(tables[it], function(err){
             if(err){
-              debug("error to create table " + model.tableName + ": " + err)
+              debug("error to create table : " + err)
             }else{
-              debug("success to create table " + model.tableName)
+              debug("success to create table")
             }
           });
         }
@@ -208,8 +208,8 @@ Model.prototype._save = function(table, attrs, callback){
       }else if(typeof it.type === "function"){
         
         if(!attrs[it.name] || !attrs[it.name].id){
-          debug("# type is function but not has id")
-          throw new Error("table name = " + this.tableName + ": type is function but not has id")
+          args.push(null) 
+          continue
         }
 
         if(typeof attrs[it.name].id === "string")
@@ -272,8 +272,8 @@ Model.prototype._update = function(table, attrs, callback){
       args.push(attrs[it.name] ? 1 : 0)
     }else if(typeof it.type === "function" ){
       if(!attrs[it.name] || !attrs[it.name].id){
-        debug("# type is function but not has id")
-        throw new Error("table name = " + this.tableName + ": type is function but not has id")
+        args.push(null) 
+        continue
       }
 
       if(typeof attrs[it.name].id === "string")
@@ -394,70 +394,59 @@ Model.prototype._prepare = function(_this, attrs){
 
 Model.prototype._resultToJson = function(item, callback, onItemConverter){
 
-  debug("Model.prototype._resultToJson")
+  try{
+    debug("Model.prototype._resultToJson " + item)
 
-  if(item){
-    var opts = {}
-    var i = 0          
-    for(var j = 0; j < this.columns.length; j++){
-
-      var it = this.columns[j]
-      var value = item[i++]
-
-      //debug("## it.type=" + it.type + ", it.name=" + it.name + ", value=" + value)
-
-      if(it.type == 'date' &&  value && moment(value, 'YYYY-MM-DD HH:mm:ss.SSS').isValid())
-        opts[it.name] = moment(value, 'YYYY-MM-DD HH:mm:ss.SSS').toDate()
-      else if(it.type == 'boolean')   
-        opts[it.name] = value && value == 1 ? true : false
-      else if(typeof it.type === "function" ){
-        opts[it.name] = new it.type({id: value})
-      }
-      else
-        opts[it.name] = value
-    }    
-
-    var itemConverted = new this.clazz(opts)
-    if(onItemConverter)
-      onItemConverter(item, itemConverted)
-
-    return callback(itemConverted)
-  }
-  callback(undefined)
-}  
-
-Model.prototype._resultsToJson = function(items, callback, onItemConverter){
-
-  var results = []
-  if(items){
-    for(var j = 0; j < items.length; j++){
-
-      var item = items[j]
+    if(item){
       var opts = {}
       var i = 0          
+      for(var j = 0; j < this.columns.length; j++){
 
-      for(var k = 0; k < this.columns.length; k++){
-
-        var it = this.columns[k]
+        var it = this.columns[j]
         var value = item[i++]
 
-        //debug("## it.name=" + it.name + ", it.type=" + it.type + ", value=" + value)
+        //debug("## it.type=" + it.type + ", it.name=" + it.name + ", value=" + value)
 
         if(it.type == 'date' &&  value && moment(value, 'YYYY-MM-DD HH:mm:ss.SSS').isValid())
           opts[it.name] = moment(value, 'YYYY-MM-DD HH:mm:ss.SSS').toDate()
         else if(it.type == 'boolean')   
           opts[it.name] = value && value == 1 ? true : false
-        else if(typeof it.type === "function" )
-          opts[it.name] = new it.type({id: value})        
-        else   
+        else if(typeof it.type === "function" ){
+          if(value){
+            opts[it.name] = new it.type({id: value})
+          }
+        }
+        else
           opts[it.name] = value
-
       }    
 
       var itemConverted = new this.clazz(opts)
       if(onItemConverter)
         onItemConverter(item, itemConverted)
-      results.push(itemConverted)
+
+      if(callback)
+        return callback(itemConverted)
+      else
+        return itemConverted
+    }
+    if(callback)
+      callback(undefined)
+    else
+      return undefined
+  }catch(error){
+    callback(undefined)
+    debug("Model.prototype._resultToJson error: " + error)
+  }
+}  
+
+Model.prototype._resultsToJson = function(items, callback, onItemConverter){
+
+  debug("Model.prototype._resultsToJson " + items)
+  var results = []
+  if(items){
+    for(var j = 0; j < items.length; j++){
+      var item = items[j]      
+      results.push(this._resultToJson(item, undefined, onItemConverter))
     }
 
     return callback(results)    
