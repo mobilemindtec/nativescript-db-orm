@@ -15,14 +15,14 @@ function DbChecker(){
 }
 
 function createDatabase (callback) {
-  new Sqlite(dbName, function(err, db) {
+  var sqlite = new Sqlite(dbName, function(err, db) {
     
     if(err)
       debug("Erro ao conectar com o banco de dados. Detalhes: " + err)
 
     callback(db)  
 
-    db.close()
+    db.close()    
   })  
 }
 
@@ -389,6 +389,26 @@ Model.prototype._all = function(table, attrs, conditions, callback){
   all(sql, args, callback)
 }
 
+Model.prototype._removeBy = function(table, attrs, conditions, callback){
+  var cons = ""
+  var sql = ""
+  var args = []
+
+  sql = " delete from " + table
+
+  if(conditions){
+    for(it in conditions){      
+      cons += " " + conditions[it].col + " " + conditions[it].op + " ? and"
+      args.push(conditions[it].val)      
+    }  
+
+    cons = cons.substring(0, cons.length-3)
+    sql += " where " + cons
+  }
+  
+  execute(sql, args, callback)
+}
+
 Model.prototype._selectAll = function(query, args, callback){
   all(query, args, callback)
 }
@@ -509,6 +529,54 @@ Model.prototype.toUpdateQuery = function(callback){
   return Model.prototype._toUpdateQuery.call(this, this.tableName, this.attrs)
 }
 
+Model.prototype.toUpdateQuery = function(callback){  
+  Model.prototype._prepare.call(this, this, this.attrs)
+  return Model.prototype._toUpdateQuery.call(this, this.tableName, this.attrs)
+}
+
+Model.prototype.toReplaceQuery = function(join, callback){  
+  
+    var query = "replace into " + this.tableName + " ("
+
+    for(var i = 0; i < this.columns.length; i++){
+      var it = this.columns[i]
+      if(it.key){
+        query += it.name + ","
+        break
+      }
+    }
+
+    for(var i = 0; i < this.columns.length; i++){
+      var it = this.columns[i]
+      if(!it.key)
+        query += it.name + ","
+    }
+
+    query = query.substring(0, query.length-1) + ") "
+
+    query += " select "
+
+    for(var i = 0; i < this.columns.length; i++){
+      var it = this.columns[i]
+      if(it.key){
+        query += callback(it.name) || "c." + it.name
+        query += ","
+      }
+    }
+
+    for(var i = 0; i < this.columns.length; i++){
+      var it = this.columns[i]
+      if(!it.key){
+        query += callback(it.name) || "c." + it.name
+        query += ","
+      }
+    }
+
+    query = query.substring(0, query.length-1) 
+    query += " from " + this.tableName + " c "
+    return query + " " + join
+}
+
 Model.prototype.update = function(callback){
   Model.prototype._prepare.call(this, this, this.attrs)
   Model.prototype._update.call(this, this.tableName, this.attrs, callback)
@@ -520,6 +588,10 @@ Model.prototype.remove = function(callback){
 
 Model.prototype.removeAll = function(callback){    
   Model.prototype._removeAll.call(this, this.tableName, callback)
+}
+
+Model.prototype.removeByFilter = function(conditions, callback){    
+  Model.prototype._removeBy.call(this, this.tableName, this.attrs, conditions)
 }
 
 Model.prototype.count = function(callback){    
