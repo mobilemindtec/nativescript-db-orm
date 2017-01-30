@@ -59,6 +59,7 @@ Complext type - another model type..
 
 Should extends base model orm.Model and in constructor define:
 
+```
 tableName
 clazz - same
 columns: json with 
@@ -68,6 +69,7 @@ columns: json with
   default - default value
   notNull - not null column
   columnName - name of db column.. if not set, name is used
+```
 
 ## create a base model (support json opratins)
 
