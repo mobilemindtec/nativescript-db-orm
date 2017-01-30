@@ -519,17 +519,17 @@ Model.prototype.save = function(callback){
   })
 }
 
-Model.prototype.toInsertQuery = function(callback){  
+Model.prototype.toInsertQuery = function(){  
   Model.prototype._prepare.call(this, this, this.attrs)
   return Model.prototype._toInsertQuery.call(this, this.tableName, this.attrs)
 }
 
-Model.prototype.toUpdateQuery = function(callback){  
+Model.prototype.toUpdateQuery = function(){  
   Model.prototype._prepare.call(this, this, this.attrs)
   return Model.prototype._toUpdateQuery.call(this, this.tableName, this.attrs)
 }
 
-Model.prototype.toUpdateQuery = function(callback){  
+Model.prototype.toUpdateQuery = function(){  
   Model.prototype._prepare.call(this, this, this.attrs)
   return Model.prototype._toUpdateQuery.call(this, this.tableName, this.attrs)
 }
