@@ -71,7 +71,7 @@ columns: json with
   columnName - name of db column.. if not set, name is used
 ```
 
-## create a base model (support json opratins)
+## create a base model (supports json operations)
 
 ```
 orm = require "nativescript-db-orm" 
