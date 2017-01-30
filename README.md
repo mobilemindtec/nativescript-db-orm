@@ -406,7 +406,7 @@ class Bar extends BaseModel
 		@columns = [
 			{name: 'serverId', type: 'int', "json": "Id"}
 			{name: 'id', key: true}
-			{name: 'foo', type: Foo, size: 100, json: 'Foo' }
+			{name: 'foo', columnName: 'fooId' ,type: Foo, size: 100, json: 'Foo' }
 		]
 
 		@attrs = {}
