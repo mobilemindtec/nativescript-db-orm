@@ -30,7 +30,7 @@ DbChecker.prototype.onDebug = function(b){
   isDebug = b
 }
 
-DbChecker.prototype.createOrUpdate = function(reset, databaseName, models, callback){
+DbChecker.prototype.createOrUpdate = function(reset, databaseName, models, callback, errorCallback){
 
   dbName = databaseName
 
@@ -61,7 +61,7 @@ DbChecker.prototype.createOrUpdate = function(reset, databaseName, models, callb
 
               var column = model.columns[j]
               
-              table += column.name
+              table += column.columnName || column.name
 
               if(column.key){
                 table += " integer primary key autoincrement, "
@@ -80,7 +80,7 @@ DbChecker.prototype.createOrUpdate = function(reset, databaseName, models, callb
                 table += " " + column.type
               }
 
-              if(column.nullable)
+              if(column.nullable || column.notNull)
                 table += " not null"
 
               if(column._default)
@@ -99,6 +99,8 @@ DbChecker.prototype.createOrUpdate = function(reset, databaseName, models, callb
           debug(tables[it])
           db.execSQL(tables[it], function(err){
             if(err){
+              if(errorCallback)
+                errorCallback(err)
               debug("error to create table : " + err)
             }else{
               debug("success to create table")
@@ -187,10 +189,10 @@ Model.prototype._toInsertQuery = function(table, attrs){
 
     var it = this.columns[i]
 
-    if(it.name == 'id')
+    if(it.key)
       continue
 
-    names += it.name + ","
+    names += (it.columnName || it.name) + ","
     values += "?,"
 
     try{
@@ -206,15 +208,25 @@ Model.prototype._toInsertQuery = function(table, attrs){
         args.push(attrs[it.name] ? 1 : 0)
       }else if(typeof it.type === "function"){
         
-        if(!attrs[it.name] || !attrs[it.name].id){
+        if(!attrs[it.name]){
           args.push(null) 
           continue
         }
 
-        if(typeof attrs[it.name].id === "string")
-          attrs[it.name].id = parseInt(attrs[it.name].id)
+        var keyName = getModelKeyName(attrs[it.name])
 
-        args.push(attrs[it.name].id)    
+        if(!attrs[it.name][keyName]){
+          args.push(null) 
+          continue
+        }
+
+        var keyVal = attrs[it.name][keyName]
+
+        if(typeof keyVal === "string")
+          keyVal = parseInt(keyVal)
+
+        args.push(keyVal)    
+  
 
       }else{ 
 
@@ -241,6 +253,15 @@ Model.prototype._toInsertQuery = function(table, attrs){
   }
 }
 
+function getModelKeyName(model){
+  for(var i = 0; i < model.columns.length; i++){
+    var col = model.columns[i]
+    if(col.key){
+      return col.name
+    }
+  }  
+}
+
 Model.prototype._toUpdateQuery = function(table, attrs){
   var args = []
   var names = ""
@@ -249,10 +270,10 @@ Model.prototype._toUpdateQuery = function(table, attrs){
 
     var it = this.columns[i]
 
-    if(it.name == 'id')
+    if(it.key)
       continue
 
-    names += it.name + " = ?,"
+    names += (it.columnName || it.name) + " = ?,"
     //values += "?,"
 
     if(it.type == 'date'){
@@ -265,15 +286,26 @@ Model.prototype._toUpdateQuery = function(table, attrs){
     }else if(it.type == 'boolean'){
       args.push(attrs[it.name] ? 1 : 0)
     }else if(typeof it.type === "function" ){
-      if(!attrs[it.name] || !attrs[it.name].id){
+
+      if(!attrs[it.name]){
         args.push(null) 
         continue
       }
 
-      if(typeof attrs[it.name].id === "string")
-        attrs[it.name].id = parseInt(attrs[it.name].id)
+      var keyName = getModelKeyName(attrs[it.name])
 
-      args.push(attrs[it.name].id)    
+      if(!attrs[it.name][keyName]){
+        args.push(null) 
+        continue
+      }
+
+      var keyVal = attrs[it.name][keyName]
+
+      if(typeof keyVal === "string")
+        keyVal = parseInt(keyVal)
+
+      args.push(keyVal)    
+
     }else{ 
 
       if(it.type == 'int' && typeof attrs[it.name] === "string")
@@ -300,11 +332,15 @@ Model.prototype._toUpdateQuery = function(table, attrs){
 Model.prototype._save = function(table, attrs, callback){
 
   var result = this._toInsertQuery(table, attrs)
+  var that = this
   
   execute(result.query, result.args, function(err, id){
     
-    if(!err)
-      attrs['id'] = id
+    if(!err){
+      var keyName = getModelKeyName(that)
+      console.log("keyName=" + keyName)
+      attrs[keyName] = id
+    }
     
     debug('save callback in model. err=' + err)
 
@@ -347,7 +383,7 @@ Model.prototype._get = function(table, attrs, conditions, callback){
   var args = []
 
   for(var i = 0; i < this.columns.length; i++)
-    names += this.columns[i].name + ","    
+    names += (this.columns[i].columnName || this.columns[i].name) + ","    
   
   names = names.substring(0, names.length-1)
 
@@ -369,7 +405,7 @@ Model.prototype._all = function(table, attrs, conditions, callback){
   var args = []
 
   for(var i = 0; i < this.columns.length; i++)
-    names += this.columns[i].name + ","    
+    names += (this.columns[i].columnName || this.columns[i].name) + ","
   
   names = names.substring(0, names.length-1)
 
@@ -449,7 +485,9 @@ Model.prototype._resultToJson = function(item, callback, onItemConverter){
           opts[it.name] = value && value == 1 ? true : false
         else if(typeof it.type === "function" ){
           if(value){
-            opts[it.name] = new it.type({id: value})
+            opts[it.name] = new it.type()
+            var keyName = getModelKeyName(opts[it.name])
+            opts[it.name][keyName] = value
           }
         }
         else
@@ -519,17 +557,17 @@ Model.prototype.save = function(callback){
   })
 }
 
-Model.prototype.toInsertQuery = function(){  
+Model.prototype.toInsertQuery = function(callback){  
   Model.prototype._prepare.call(this, this, this.attrs)
   return Model.prototype._toInsertQuery.call(this, this.tableName, this.attrs)
 }
 
-Model.prototype.toUpdateQuery = function(){  
+Model.prototype.toUpdateQuery = function(callback){  
   Model.prototype._prepare.call(this, this, this.attrs)
   return Model.prototype._toUpdateQuery.call(this, this.tableName, this.attrs)
 }
 
-Model.prototype.toUpdateQuery = function(){  
+Model.prototype.toUpdateQuery = function(callback){  
   Model.prototype._prepare.call(this, this, this.attrs)
   return Model.prototype._toUpdateQuery.call(this, this.tableName, this.attrs)
 }
@@ -541,7 +579,7 @@ Model.prototype.toReplaceQuery = function(join, callback){
     for(var i = 0; i < this.columns.length; i++){
       var it = this.columns[i]
       if(it.key){
-        query += it.name + ","
+        query += (it.columnName || it.name) + ","
         break
       }
     }
@@ -549,7 +587,7 @@ Model.prototype.toReplaceQuery = function(join, callback){
     for(var i = 0; i < this.columns.length; i++){
       var it = this.columns[i]
       if(!it.key)
-        query += it.name + ","
+        query += (it.columnName || it.name) + ","
     }
 
     query = query.substring(0, query.length-1) + ") "
@@ -559,7 +597,7 @@ Model.prototype.toReplaceQuery = function(join, callback){
     for(var i = 0; i < this.columns.length; i++){
       var it = this.columns[i]
       if(it.key){
-        query += callback(it.name) || "c." + it.name
+        query += callback(it.name) || "c." + (it.columnName || it.name)
         query += ","
       }
     }
@@ -567,7 +605,7 @@ Model.prototype.toReplaceQuery = function(join, callback){
     for(var i = 0; i < this.columns.length; i++){
       var it = this.columns[i]
       if(!it.key){
-        query += callback(it.name) || "c." + it.name
+        query += callback(it.name) || "c." + (it.columnName || it.name)
         query += ","
       }
     }
@@ -600,7 +638,8 @@ Model.prototype.count = function(callback){
 
 Model.prototype.get = function(id, callback){
   var self = this
-  Model.prototype._get.call(this, this.tableName, this.attrs, [{ col: 'id', 'op': '=', 'val': id }] , function(err, item){      
+  var keyName = getModelKeyName(this)
+  Model.prototype._get.call(this, this.tableName, this.attrs, [{ col: keyName, 'op': '=', 'val': id }] , function(err, item){      
 
     if(err){
       debug("Model.prototype.get error: " + err)
