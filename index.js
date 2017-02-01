@@ -338,7 +338,6 @@ Model.prototype._save = function(table, attrs, callback){
     
     if(!err){
       var keyName = getModelKeyName(that)
-      console.log("keyName=" + keyName)
       attrs[keyName] = id
     }
     
