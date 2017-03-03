@@ -397,7 +397,7 @@ Model.prototype._get = function(table, attrs, conditions, callback){
   get(" select " + names + " from " + table + " where " + cons, args, callback)
 }
 
-Model.prototype._all = function(table, attrs, conditions, callback){
+Model.prototype._all = function(table, attrs, conditions_args, callback){
   var names = ""
   var cons = ""
   var sql = ""
@@ -410,14 +410,34 @@ Model.prototype._all = function(table, attrs, conditions, callback){
 
   sql = " select " + names + " from " + table
 
-  if(conditions){
-    for(it in conditions){      
-      cons += " " + conditions[it].col + " " + conditions[it].op + " ? and"
-      args.push(conditions[it].val)      
-    }  
+  console.log
 
-    cons = cons.substring(0, cons.length-3)
-    sql += " where " + cons
+  if(conditions_args){
+    var conditions 
+    var extra = {}
+
+    if(Object.prototype.toString.call(conditions_args) === '[object Array]'){
+      conditions = conditions_args
+    } else {
+      conditions = conditions_args.conditions
+      extra = conditions_args.extra || {}
+    }
+
+    if(conditions){
+      for(it in conditions){      
+        cons += " " + conditions[it].col + " " + conditions[it].op + " ? and"
+        args.push(conditions[it].val)      
+      }  
+
+      cons = cons.substring(0, cons.length-3)
+      sql += " where " + cons
+    }
+
+    if(conditions_args.limit){
+      sql += " limit ? offset ?"
+      args.push(conditions_args.limit)
+      args.push(conditions_args.offset || 0)
+    }
   }
   
 
