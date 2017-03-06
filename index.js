@@ -1,10 +1,10 @@
 var Sqlite = require( "nativescript-sqlite" );
 var dbORM = require("./orm");
 var moment = require("moment")
-var dbName 
+var dbName
 var isDebug = false
 
-function debug(text){  
+function debug(text){
   if(isDebug)
     console.log("** ORM: " + text)
 }
@@ -16,14 +16,14 @@ function DbChecker(){
 
 function createDatabase (callback) {
   var sqlite = new Sqlite(dbName, function(err, db) {
-    
+
     if(err)
       debug("Erro ao conectar com o banco de dados. Detalhes: " + err)
 
-    callback(db)  
+    callback(db)
 
-    db.close()    
-  })  
+    db.close()
+  })
 }
 
 DbChecker.prototype.onDebug = function(b){
@@ -52,7 +52,7 @@ DbChecker.prototype.createOrUpdate = function(reset, databaseName, models, callb
         var tables = []
 
         for(var i = 0; i < models.length; i++){
-          
+
           var model = models[i]
 
           var table = "create table " + model.tableName + " ( "
@@ -60,7 +60,7 @@ DbChecker.prototype.createOrUpdate = function(reset, databaseName, models, callb
             for(var j = 0; j < model.columns.length; j++){
 
               var column = model.columns[j]
-              
+
               table += column.columnName || column.name
 
               if(column.key){
@@ -91,7 +91,7 @@ DbChecker.prototype.createOrUpdate = function(reset, databaseName, models, callb
             }
 
           table +=  " )"
-          
+
           tables.push(table)
         }
 
@@ -110,14 +110,14 @@ DbChecker.prototype.createOrUpdate = function(reset, databaseName, models, callb
 
         debug('update database to version 1')
         db.version(1); // Sets the version to 1
-      
+
       }else{
         debug('dont update database version')
       }
 
       callback()
     });
-  });     
+  });
 }
 
 function Model(){
@@ -134,48 +134,48 @@ function extend(ChildClass, ParentClass) {
 function execute(sql, params, callback){
 
   createDatabase(function(db) {
-    
+
     debug('execute ' + sql + "  values " + JSON.stringify(params))
 
     db.execSQL(sql, params, callback)
 
-  });   
+  });
 }
 
 Model.prototype.executeNative = execute;
 
 function get(sql, params, callback){
   createDatabase(function(db) {
-    
+
     debug('execute ' + sql + "  values " + JSON.stringify(params))
 
     db.get(sql, params, callback)
 
-  });   
+  });
 }
 
 Model.prototype.getNative = get;
 
 function all(sql, params, callback){
   createDatabase(function(db) {
-    
+
     debug('execute ' + sql + "  values " + JSON.stringify(params))
 
     db.all(sql, params, callback)
 
-  });   
+  });
 }
 
 Model.prototype.allNative = all;
 
 function each(sql, params, rowCallback, finishedCallback){
   createDatabase(function(db) {
-    
+
     debug('execute ' + sql + "  values " + JSON.stringify(params))
 
     db.each(sql, params, rowCallback, finishedCallback)
 
-  });   
+  });
 }
 
 Model.prototype.eachNative = each;
@@ -202,21 +202,21 @@ Model.prototype._toInsertQuery = function(table, attrs){
           var val = attrs[it.name] && moment(attrs[it.name]).isValid() ? moment(attrs[it.name]).format('YYYY-MM-DD HH:mm:ss.SSS') : null
           args.push(val)
         }else{
-          args.push(null)        
+          args.push(null)
         }
       }else if(it.type == 'boolean'){
         args.push(attrs[it.name] ? 1 : 0)
       }else if(typeof it.type === "function"){
-        
+
         if(!attrs[it.name]){
-          args.push(null) 
+          args.push(null)
           continue
         }
 
         var keyName = getModelKeyName(attrs[it.name])
 
         if(!attrs[it.name][keyName]){
-          args.push(null) 
+          args.push(null)
           continue
         }
 
@@ -225,10 +225,10 @@ Model.prototype._toInsertQuery = function(table, attrs){
         if(typeof keyVal === "string")
           keyVal = parseInt(keyVal)
 
-        args.push(keyVal)    
-  
+        args.push(keyVal)
 
-      }else{ 
+
+      }else{
 
         if(it.type == 'int' && typeof attrs[it.name] === 'string')
           attrs[it.name] = parseInt(attrs[it.name])
@@ -236,13 +236,13 @@ Model.prototype._toInsertQuery = function(table, attrs){
           attrs[it.name] = parseFloat(attrs[it.name])
 
         args.push(attrs[it.name] || null)
-      }      
+      }
     }catch(e){
       debug("Model.prototype._save error: " + e)
     }
 
   }
-  
+
   // remove last (,)
   names = names.substring(0, names.length-1)
   values = values.substring(0, values.length-1)
@@ -259,7 +259,7 @@ function getModelKeyName(model){
     if(col.key){
       return col.name
     }
-  }  
+  }
 }
 
 Model.prototype._toUpdateQuery = function(table, attrs){
@@ -281,21 +281,21 @@ Model.prototype._toUpdateQuery = function(table, attrs){
         var val = attrs[it.name] && moment(attrs[it.name]).isValid() ? moment(attrs[it.name]).format('YYYY-MM-DD HH:mm:ss.SSS') : null
         args.push(val)
       }else{
-        args.push(null)        
+        args.push(null)
       }
     }else if(it.type == 'boolean'){
       args.push(attrs[it.name] ? 1 : 0)
     }else if(typeof it.type === "function" ){
 
       if(!attrs[it.name]){
-        args.push(null) 
+        args.push(null)
         continue
       }
 
       var keyName = getModelKeyName(attrs[it.name])
 
       if(!attrs[it.name][keyName]){
-        args.push(null) 
+        args.push(null)
         continue
       }
 
@@ -304,9 +304,9 @@ Model.prototype._toUpdateQuery = function(table, attrs){
       if(typeof keyVal === "string")
         keyVal = parseInt(keyVal)
 
-      args.push(keyVal)    
+      args.push(keyVal)
 
-    }else{ 
+    }else{
 
       if(it.type == 'int' && typeof attrs[it.name] === "string")
         attrs[it.name] = parseInt(attrs[it.name])
@@ -326,54 +326,54 @@ Model.prototype._toUpdateQuery = function(table, attrs){
   return {
     query: "update " + table + " set " + names + " where id = ?",
     args: args
-  }  
+  }
 }
 
 Model.prototype._save = function(table, attrs, callback){
 
   var result = this._toInsertQuery(table, attrs)
   var that = this
-  
+
   execute(result.query, result.args, function(err, id){
-    
+
     if(!err){
       var keyName = getModelKeyName(that)
       attrs[keyName] = id
     }
-    
+
     debug('save callback in model. err=' + err)
 
     callback(err)
-  })   
+  })
 }
 
 Model.prototype._update = function(table, attrs, callback){
- 
+
   var result = this._toUpdateQuery(table, attrs)
 
   execute(result.query, result.args, function(err){
     debug('update callback in model. err=' + err)
     callback(err)
-  })   
+  })
 }
 
 Model.prototype._remove = function(table, attrs, callback){
   execute("delete from " + table + " where id = ?", [attrs['id']], function(err){
     debug('delete callback in model. err=' + err)
     callback(err)
-  })     
+  })
 }
 
 Model.prototype._removeAll = function(table, callback){
   execute("delete from " + table, [], function(err){
     debug('delete all models callback. err=' + err)
     callback(err)
-  })     
+  })
 }
 
 
 Model.prototype._count = function(table, callback){
-  get("select count(id) from " + table, [], callback)     
+  get("select count(id) from " + table, [], callback)
 }
 
 Model.prototype._get = function(table, attrs, conditions, callback){
@@ -382,15 +382,15 @@ Model.prototype._get = function(table, attrs, conditions, callback){
   var args = []
 
   for(var i = 0; i < this.columns.length; i++)
-    names += (this.columns[i].columnName || this.columns[i].name) + ","    
-  
+    names += (this.columns[i].columnName || this.columns[i].name) + ","
+
   names = names.substring(0, names.length-1)
 
   for(it in conditions){
     debug('get ' + it)
     cons += conditions[it].col + " " + conditions[it].op + " ? and"
     args.push(conditions[it].val)
-  }  
+  }
 
   cons = cons.substring(0, cons.length-3)
 
@@ -404,33 +404,61 @@ Model.prototype._all = function(table, attrs, conditions_args, callback){
   var args = []
 
   for(var i = 0; i < this.columns.length; i++)
-    names += (this.columns[i].columnName || this.columns[i].name) + ","
-  
+    names += "c." + (this.columns[i].columnName || this.columns[i].name) + ","
+
   names = names.substring(0, names.length-1)
 
-  sql = " select " + names + " from " + table
+  sql = " select " + names + " from " + table + " c "
 
   console.log
 
   if(conditions_args){
-    var conditions 
+    var conditions
     var extra = {}
+    var sort = undefined
+    var order = undefined
+    var joins = []
 
     if(Object.prototype.toString.call(conditions_args) === '[object Array]'){
       conditions = conditions_args
     } else {
       conditions = conditions_args.conditions
       extra = conditions_args.extra || {}
+      sort = conditions_args.sort
+      order = conditions_args.order
+
+      if(conditions_args.joins){
+        for(var i in conditions_args.joins){
+          joins.push(conditions_args.joins[i])
+        }
+      }
+    }
+
+    for(var i in joins){
+      sql += " " + joins[i] + " "
     }
 
     if(conditions){
-      for(it in conditions){      
-        cons += " " + conditions[it].col + " " + conditions[it].op + " ? and"
-        args.push(conditions[it].val)      
-      }  
+      for(it in conditions){
+        var columnName = conditions[it].col
+
+        if(columnName.indexOf(".") == -1)
+          columnName = "c." + columnName
+
+        cons += " " + columnName + " " + conditions[it].op + " ? and"
+        args.push(conditions[it].val)
+      }
 
       cons = cons.substring(0, cons.length-3)
       sql += " where " + cons
+    }
+
+    if(sort){
+      sql += " order by " + sort
+    }
+
+    if(order){
+      sql += " " + order
     }
 
     if(conditions_args.limit){
@@ -439,7 +467,7 @@ Model.prototype._all = function(table, attrs, conditions_args, callback){
       args.push(conditions_args.offset || 0)
     }
   }
-  
+
 
   all(sql, args, callback)
 }
@@ -452,15 +480,15 @@ Model.prototype._removeBy = function(table, attrs, conditions, callback){
   sql = " delete from " + table
 
   if(conditions){
-    for(it in conditions){      
+    for(it in conditions){
       cons += " " + conditions[it].col + " " + conditions[it].op + " ? and"
-      args.push(conditions[it].val)      
-    }  
+      args.push(conditions[it].val)
+    }
 
     cons = cons.substring(0, cons.length-3)
     sql += " where " + cons
   }
-  
+
   execute(sql, args, callback)
 }
 
@@ -476,12 +504,12 @@ Model.prototype._selectOne = function(query, args, callback){
 Model.prototype._init = function(_this, attrs){
   for(it in attrs)
     _this[it] = attrs[it]
-}  
+}
 
 Model.prototype._prepare = function(_this, attrs){
   for(it in attrs)
     attrs[it] = _this[it]
-}  
+}
 
 Model.prototype._resultToJson = function(item, callback, onItemConverter){
 
@@ -490,7 +518,7 @@ Model.prototype._resultToJson = function(item, callback, onItemConverter){
 
     if(item){
       var opts = {}
-      var i = 0          
+      var i = 0
       for(var j = 0; j < this.columns.length; j++){
 
         var it = this.columns[j]
@@ -500,7 +528,7 @@ Model.prototype._resultToJson = function(item, callback, onItemConverter){
 
         if(it.type == 'date' &&  value && moment(value, 'YYYY-MM-DD HH:mm:ss.SSS').isValid())
           opts[it.name] = moment(value, 'YYYY-MM-DD HH:mm:ss.SSS').toDate()
-        else if(it.type == 'boolean')   
+        else if(it.type == 'boolean')
           opts[it.name] = value && value == 1 ? true : false
         else if(typeof it.type === "function" ){
           if(value){
@@ -511,7 +539,7 @@ Model.prototype._resultToJson = function(item, callback, onItemConverter){
         }
         else
           opts[it.name] = value
-      }    
+      }
 
       var itemConverted = new this.clazz(opts)
       if(onItemConverter)
@@ -530,7 +558,7 @@ Model.prototype._resultToJson = function(item, callback, onItemConverter){
     callback(undefined)
     debug("Model.prototype._resultToJson error: " + error)
   }
-}  
+}
 
 Model.prototype._resultsToJson = function(items, callback, onItemConverter){
 
@@ -538,17 +566,17 @@ Model.prototype._resultsToJson = function(items, callback, onItemConverter){
   var results = []
   if(items){
     for(var j = 0; j < items.length; j++){
-      var item = items[j]      
+      var item = items[j]
       results.push(this._resultToJson(item, undefined, onItemConverter))
     }
 
-    return callback(results)    
+    return callback(results)
   }
   callback(undefined)
-} 
+}
 
 Model.prototype._set = function(params){
-  for(it in params){    
+  for(it in params){
     this.attrs[it] = params[it]
   }
 
@@ -570,29 +598,29 @@ Model.prototype.save = function(callback){
     }
 
 
-    self['id'] = self.attrs['id']      
+    self['id'] = self.attrs['id']
     if(callback)
       callback()
   })
 }
 
-Model.prototype.toInsertQuery = function(callback){  
+Model.prototype.toInsertQuery = function(callback){
   Model.prototype._prepare.call(this, this, this.attrs)
   return Model.prototype._toInsertQuery.call(this, this.tableName, this.attrs)
 }
 
-Model.prototype.toUpdateQuery = function(callback){  
+Model.prototype.toUpdateQuery = function(callback){
   Model.prototype._prepare.call(this, this, this.attrs)
   return Model.prototype._toUpdateQuery.call(this, this.tableName, this.attrs)
 }
 
-Model.prototype.toUpdateQuery = function(callback){  
+Model.prototype.toUpdateQuery = function(callback){
   Model.prototype._prepare.call(this, this, this.attrs)
   return Model.prototype._toUpdateQuery.call(this, this.tableName, this.attrs)
 }
 
-Model.prototype.toReplaceQuery = function(join, callback){  
-  
+Model.prototype.toReplaceQuery = function(join, callback){
+
     var query = "replace into " + this.tableName + " ("
 
     for(var i = 0; i < this.columns.length; i++){
@@ -629,7 +657,7 @@ Model.prototype.toReplaceQuery = function(join, callback){
       }
     }
 
-    query = query.substring(0, query.length-1) 
+    query = query.substring(0, query.length-1)
     query += " from " + this.tableName + " c "
     return query + " " + join
 }
@@ -639,26 +667,26 @@ Model.prototype.update = function(callback){
   Model.prototype._update.call(this, this.tableName, this.attrs, callback)
 }
 
-Model.prototype.remove = function(callback){    
+Model.prototype.remove = function(callback){
   Model.prototype._remove.call(this, this.tableName, this.attrs, callback)
 }
 
-Model.prototype.removeAll = function(callback){    
+Model.prototype.removeAll = function(callback){
   Model.prototype._removeAll.call(this, this.tableName, callback)
 }
 
-Model.prototype.removeByFilter = function(conditions, callback){    
+Model.prototype.removeByFilter = function(conditions, callback){
   Model.prototype._removeBy.call(this, this.tableName, this.attrs, conditions)
 }
 
-Model.prototype.count = function(callback){    
+Model.prototype.count = function(callback){
   Model.prototype._count.call(this, this.tableName, callback)
 }
 
 Model.prototype.get = function(id, callback){
   var self = this
   var keyName = getModelKeyName(this)
-  Model.prototype._get.call(this, this.tableName, this.attrs, [{ col: keyName, 'op': '=', 'val': id }] , function(err, item){      
+  Model.prototype._get.call(this, this.tableName, this.attrs, [{ col: keyName, 'op': '=', 'val': id }] , function(err, item){
 
     if(err){
       debug("Model.prototype.get error: " + err)
@@ -666,7 +694,7 @@ Model.prototype.get = function(id, callback){
     }
 
     if(item)
-      Model.prototype._resultToJson.call(self, item, callback)    
+      Model.prototype._resultToJson.call(self, item, callback)
     else
       callback(null)
   })
@@ -674,7 +702,7 @@ Model.prototype.get = function(id, callback){
 
 Model.prototype.getByServerId = function(serverId, callback){
   var self = this
-  Model.prototype._get.call(this, this.tableName, this.attrs, [{ col: 'serverId', 'op': '=', 'val': serverId }] , function(err, item){      
+  Model.prototype._get.call(this, this.tableName, this.attrs, [{ col: 'serverId', 'op': '=', 'val': serverId }] , function(err, item){
 
     if(err){
       debug("Model.prototype.getByServerId error: " + err)
@@ -682,7 +710,7 @@ Model.prototype.getByServerId = function(serverId, callback){
     }
 
     if(item)
-      Model.prototype._resultToJson.call(self, item, callback)    
+      Model.prototype._resultToJson.call(self, item, callback)
     else
       callback(null)
   })
@@ -698,8 +726,8 @@ Model.prototype.all = function(callback){
     }
 
     if(items){
-      debug("###### select " + self.tableName + " count=(" + items.length + ")")      
-      Model.prototype._resultsToJson.call(self, items, callback)      
+      debug("###### select " + self.tableName + " count=(" + items.length + ")")
+      Model.prototype._resultsToJson.call(self, items, callback)
     }else{
       debug("###### select " + self.tableName + " count=(0)")
       callback(null)
@@ -718,7 +746,7 @@ Model.prototype.filter = function(conditions, callback){
 
     if(items){
       debug("###### select " + self.tableName + " count=(" + items.length + ")")
-      Model.prototype._resultsToJson.call(self, items, callback)      
+      Model.prototype._resultsToJson.call(self, items, callback)
     }else{
       debug("###### select " + self.tableName + " count=(0)")
       callback(null)
@@ -729,7 +757,7 @@ Model.prototype.filter = function(conditions, callback){
 
 Model.prototype.each = function(each, callback){
   var self = this
-  Model.prototype._all.call(this, this.tableName, this.attrs, null, function(err, items){   
+  Model.prototype._all.call(this, this.tableName, this.attrs, null, function(err, items){
 
     if(err){
       debug("Model.prototype.each error: " + err)
@@ -738,7 +766,7 @@ Model.prototype.each = function(each, callback){
 
     if(items){
       debug("###### select " + self.tableName + " count=(" + items.length + ")")
-      Model.prototype._resultsToJson.call(self, items, callback)      
+      Model.prototype._resultsToJson.call(self, items, callback)
     }else{
       debug("###### select " + self.tableName + " count=(0)")
       callback()
