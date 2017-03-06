@@ -410,8 +410,6 @@ Model.prototype._all = function(table, attrs, conditions_args, callback){
 
   sql = " select " + names + " from " + table + " c "
 
-  console.log
-
   if(conditions_args){
     var conditions
     var extra = {}
@@ -440,13 +438,20 @@ Model.prototype._all = function(table, attrs, conditions_args, callback){
 
     if(conditions){
       for(it in conditions){
-        var columnName = conditions[it].col
 
-        if(columnName.indexOf(".") == -1)
-          columnName = "c." + columnName
+        if(conditions[it].native){
+          cons += " " + conditions[it].native + " and"
+        }else{
 
-        cons += " " + columnName + " " + conditions[it].op + " ? and"
-        args.push(conditions[it].val)
+          var columnName = conditions[it].col
+
+          if(columnName.indexOf(".") == -1)
+            columnName = "c." + columnName
+
+          cons += " " + columnName + " " + conditions[it].op + " ? and"
+          args.push(conditions[it].val)
+
+        }
       }
 
       cons = cons.substring(0, cons.length-3)
@@ -607,11 +612,6 @@ Model.prototype.save = function(callback){
 Model.prototype.toInsertQuery = function(callback){
   Model.prototype._prepare.call(this, this, this.attrs)
   return Model.prototype._toInsertQuery.call(this, this.tableName, this.attrs)
-}
-
-Model.prototype.toUpdateQuery = function(callback){
-  Model.prototype._prepare.call(this, this, this.attrs)
-  return Model.prototype._toUpdateQuery.call(this, this.tableName, this.attrs)
 }
 
 Model.prototype.toUpdateQuery = function(callback){
