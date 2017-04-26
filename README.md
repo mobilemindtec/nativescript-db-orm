@@ -71,306 +71,16 @@ columns: json with
   columnName - name of db column.. if not set, name is used
 ```
 
-## create a base model (supports json operations)
+## create a model
+
 
 ```
+
 orm = require "nativescript-db-orm" 
 moment = require "moment"
 Model = orm.Model
 
-class BaseModel extends Model 
-
-	constructor: (args) ->
-
-	set: (opts) ->
-		@_set(opts)
-
-	save: (callback) ->
-		super(callback)
-
-	saveOrUpdatePromise: () ->
-		that = @
-		return new Promise (resolve, reject) ->
-			
-			that.getByServerId that.serverId, (entity) ->
-
-				if entity
-					that.id = entity.id
-					that.update (err) ->
-						if err
-							reject(err)
-						else
-							resolve()
-				else
-					that.save (err) ->
-						if err
-							reject(err)
-						else
-							resolve()
-
-	savePromise: () ->
-		that = @
-		return new Promise (resolve, reject) ->			
-			that.save (err) ->
-				if errallNative
-					reject(err)
-				else
-					resolve()							
-
-
-	update: (callback) ->
-		super(callback)
-
-	saveOrUpdate: (callback) ->
-		that = @
-		@getByServerId @serverId, (entity) ->
-			if entity
-				that.id = entity.id
-				that.update callback
-			else
-				that.save callback
- 
-	remove: (callback) ->
-		super(callback)
-
-	removePromise: (callback) ->
-		that = @
-
-		return new Promise (resolve, reject) ->
-			that.remove (err) ->
-				if err
-					reject(err)
-				else
-					resolve()
-
-
-	removeAll: (callback) ->
-		super(callback)
-
-	removeAllPromise: () ->
-		that = @
-
-		return new Promise (resolve, reject) ->
-			that.removeAll (err) ->
-				if err
-					reject(err)
-				else
-					resolve()
-
-	removeByFilterPromise: (args) ->
-		that = @
-
-		if Object.prototype.toString.call(args) != '[object Array]'
-			args = [args]
-
-		for it in args
-			if !it.op 
-				it.op = '='
-
-		return new Promise (resolve, reject) ->
-	    that.removeByFilter [args], (err) ->
-				if err
-					reject(err)
-				else
-					resolve()
-
-
-	get: (id, callback) ->
-		super(id, callback)  
-
-	getByServerId: (id, callback) ->
-		if id && id > 0
-			super(id, callback)
-		else
-			callback(undefined)
-
-	all: (callback) ->
-		super(callback)
-
-	each: (each, callback) ->
-		super(each, callback)
-
-	toInsertQuery: () ->
-		super()
-
-	toUpdateQuery: () ->
-		super()
-
-	count: (callback) ->
-		super(callback)
-
-	foreach: (items, each, callback) ->
-
-		nextIndex = 0
-		that = @
-
-		next = () ->
-
-			if !items || nextIndex >= items.length
-				if callback
-					callback()
-				return	    
-
-			entity = items[nextIndex]
-
-			# entity and next callback
-			result = each entity, () ->
-				nextIndex++
-				try
-					next()
-				catch e
-					that.debug("foreach error 1: #{e}")
-
-
-			if !result # continuar
-				nextIndex++
-				try
-					next()
-				catch e
-					that.debug("foreach error 2: #{e}")
-
-		try
-			next()
-		catch e
-			@debug("foreach error 3: #{e}")
-
-	runAll: (list) ->
-
-		that = @
-
-		return new Promise (resolve, reject) ->
-
-			each = (p, next) ->
-				
-				p.then(() ->
-					next()
-				).catch (error) ->
-					reject(error)
-
-				return true
-
-			that.foreach list, each, () ->
-				resolve()
-
-	saveOrUpdateBatch: (list) ->
-
-		that = @
-
-		return new Promise (resolve, reject) ->
-
-			each = (p, next) ->
-				
-				p.saveOrUpdatePromise().then(() ->
-					next()
-				).catch (error) ->
-					reject(error)
-
-				return true
-
-			that.foreach list, each, () ->
-				resolve()	
-
-	saveBatch: (list) ->
-
-		that = @
-
-		return new Promise (resolve, reject) ->
-
-			each = (p, next) ->
-				
-				p.savePromise().then(() ->
-					next()
-				).catch (error) ->
-					reject(error)
-
-				return true
-
-			that.foreach list, each, () ->
-				resolve()
-        
-// json utils
-
-	fromJson: (json, model) ->
-		if !json
-			return undefined
-
-		obj = model || new @clazz()
-
-		for col in @columns
-			if col.json
-
-				value = undefined
-
-				if col.owner
-					value = json[col.owner][col.json]
-				else
-					value = json[col.json]
-
-				if typeof col.type is "function"
-					m = new col.type()
-					obj[col.name] = m.fromJson(value)
-				else if col.fromJsonParser
-					col.fromJsonParser(json, col.name, obj)
-				else
-					obj[col.name] = value
-
-		return obj
-
-	fromJsonList: (jsonList) ->
-		if !jsonList
-			return []
-
-		items = []
-
-		for it in jsonList
-			obj = @fromJson(it)
-			items.push(new @clazz(obj))	  
-
-		return items
-
-	toJson: () ->
-		json = {}
-
-		for col in @columns
-			if col.json
-
-				it = json
-
-				if col.owner
-					json[col.owner] = {}
-					it = json[col.owner]
-
-				if typeof col.type is "function"
-					it[col.json] = @[col.name].toJson()
-				else if col.toJsonParser					
-					col.toJsonParser(@, col.name, it)
-				else
-					if col.type == 'date' && @[col.name] && moment(@[col.name]).isValid()
-						it[col.json] = moment(@[col.name]).format()
-					else if col.type == 'int' || col.type == 'decimal'
-						it[col.json] = @[col.name] + ""
-					else
-						it[col.json] = @[col.name]
-
-		return json
-
-	toJsonList: (list) ->
-		jsonList = []
-
-		for it in list
-			jsonList.push(it.toJson())	  
-
-		return jsonList
-
-
-module.exports = BaseModel
-
-```
-
-## create a model
-
-```
-class Foo extends BaseModel
+class Foo extends Model
 
 	constructor: (params) ->
 		super(@)
@@ -381,9 +91,9 @@ class Foo extends BaseModel
 		@clazz = Foo
 
 		@columns = [
-			{name: 'serverId', type: 'int', "json": "Id"}
+			{name: 'serverId', type: 'int' }
 			{name: 'id', key: true}
-			{name: 'name', type: 'string', size: 100, json: 'Description' }
+			{name: 'name', type: 'string', size: 100 }
 		]
 
 		@attrs = {}
@@ -393,7 +103,7 @@ class Foo extends BaseModel
 		Model.prototype._init.call(@, @, @.attrs)
     
     
-class Bar extends BaseModel
+class Bar extends Model
 
 	constructor: (params) ->
 		super(@)
@@ -404,9 +114,9 @@ class Bar extends BaseModel
 		@clazz = Bar
 
 		@columns = [
-			{name: 'serverId', type: 'int', "json": "Id"}
+			{name: 'serverId', type: 'int'}
 			{name: 'id', key: true}
-			{name: 'foo', columnName: 'fooId' ,type: Foo, size: 100, json: 'Foo' }
+			{name: 'foo', columnName: 'fooId' ,type: Foo}
 		]
 
 		@attrs = {}
@@ -489,3 +199,51 @@ dbChecker.createOrUpdate(dropAndCreate, myAppDbName ,[
 
 
 ```
+
+## filter
+```
+
+model.filter({
+	conditions:[
+		{ col: 'name', op: 'like', val: '%jonh%' },
+		{ native: "p.birthday < date('now','+5 day')" }
+	],
+	sort: 'name',
+	order: 'desc',
+	limit: 10,
+	offset: 0,
+	joins: [
+		"join profiles p on p.id == c.user_id "
+	]
+}, (results) ->
+	
+)
+
+```
+
+## getNative
+
+```
+
+model.getNative "select count(*) from users", (err, count) ->
+	
+
+```
+
+## allNative
+
+```
+
+model.allNative "select id, name from users", (err, results) ->
+	
+	# convert data to model
+	model._resultsToJson(results, (modelItem) ->
+		
+		#result callback
+		
+	, (dbRow, modelItem) ->
+		#converter data to model callback (optional)
+		return modelItem
+	)
+})
+
