@@ -230,10 +230,17 @@ Model.prototype._toInsertQuery = function(table, attrs){
 
       }else{
 
-        if(it.type == 'int' && typeof attrs[it.name] === 'string')
-          attrs[it.name] = parseInt(attrs[it.name])
-        else if(it.type == 'decimal' && typeof attrs[it.name] === 'string')
-          attrs[it.name] = parseFloat(attrs[it.name])
+        if(it.type == 'int'){
+          if(typeof attrs[it.name] === 'string')
+            attrs[it.name] = parseInt(attrs[it.name])
+          else
+            attrs[it.name] = attrs[it.name]
+        }else if(it.type == 'decimal'){
+          if(typeof attrs[it.name] === 'string')
+            attrs[it.name] = parseFloat(attrs[it.name])
+          else
+            attrs[it.name] = attrs[it.name]
+        }
 
         args.push(attrs[it.name] || null)
       }
@@ -308,11 +315,17 @@ Model.prototype._toUpdateQuery = function(table, attrs){
 
     }else{
 
-      if(it.type == 'int' && typeof attrs[it.name] === "string")
-        attrs[it.name] = parseInt(attrs[it.name])
-
-      if(it.type == 'decimal' && typeof attrs[it.name] === "string")
-        attrs[it.name] = parseFloat(attrs[it.name])
+      if(it.type == 'int'){
+        if(typeof attrs[it.name] === "string")
+          attrs[it.name] = parseInt(attrs[it.name])
+        else
+          attrs[it.name] = attrs[it.name]
+      }else if(it.type == 'decimal'){
+        if(typeof attrs[it.name] === "string")
+          attrs[it.name] = parseFloat(attrs[it.name])
+        else
+          attrs[it.name] = attrs[it.name]
+      }
 
       args.push(attrs[it.name] || null)
     }
@@ -388,7 +401,13 @@ Model.prototype._get = function(table, attrs, conditions, callback){
 
   for(it in conditions){
     debug('get ' + it)
-    cons += conditions[it].col + " " + conditions[it].op + " ? and"
+
+    var op = conditions[it].op
+
+    if(!op)
+      op = "="
+
+    cons += conditions[it].col + " " + op + " ? and"
     args.push(conditions[it].val)
   }
 
@@ -397,7 +416,7 @@ Model.prototype._get = function(table, attrs, conditions, callback){
   get(" select " + names + " from " + table + " where " + cons, args, callback)
 }
 
-Model.prototype._all = function(table, attrs, conditions_args, callback){
+Model.prototype._all = function(table, attrs, options, callback){
   var names = ""
   var cons = ""
   var sql = ""
@@ -410,24 +429,24 @@ Model.prototype._all = function(table, attrs, conditions_args, callback){
 
   sql = " select " + names + " from " + table + " c "
 
-  if(conditions_args){
+  if(options){
     var conditions
     var extra = {}
     var sort = undefined
     var order = undefined
     var joins = []
 
-    if(Object.prototype.toString.call(conditions_args) === '[object Array]'){
-      conditions = conditions_args
+    if(Object.prototype.toString.call(options) === '[object Array]'){
+      conditions = options
     } else {
-      conditions = conditions_args.conditions
-      extra = conditions_args.extra || {}
-      sort = conditions_args.sort
-      order = conditions_args.order
+      conditions = options.conditions
+      extra = options.extra || {}
+      sort = options.sort
+      order = options.order
 
-      if(conditions_args.joins){
-        for(var i in conditions_args.joins){
-          joins.push(conditions_args.joins[i])
+      if(options.joins){
+        for(var i in options.joins){
+          joins.push(options.joins[i])
         }
       }
     }
@@ -437,6 +456,11 @@ Model.prototype._all = function(table, attrs, conditions_args, callback){
     }
 
     if(conditions){
+
+      if(!(Object.prototype.toString.call(conditions) === '[object Array]')){
+        conditions = [ conditions ]
+      }
+
       for(it in conditions){
 
         if(conditions[it].native){
@@ -444,11 +468,16 @@ Model.prototype._all = function(table, attrs, conditions_args, callback){
         }else{
 
           var columnName = conditions[it].col
+          var op = conditions[it].op
 
           if(columnName.indexOf(".") == -1)
             columnName = "c." + columnName
 
-          cons += " " + columnName + " " + conditions[it].op + " ? and"
+          
+          if(!op)
+            op = "="
+
+          cons += " " + columnName + " " + op + " ? and"
           args.push(conditions[it].val)
 
         }
@@ -466,10 +495,10 @@ Model.prototype._all = function(table, attrs, conditions_args, callback){
       sql += " " + order
     }
 
-    if(conditions_args.limit){
+    if(options.limit){
       sql += " limit ? offset ?"
-      args.push(conditions_args.limit)
-      args.push(conditions_args.offset || 0)
+      args.push(options.limit)
+      args.push(options.offset || 0)
     }
   }
 
@@ -486,7 +515,13 @@ Model.prototype._removeBy = function(table, attrs, conditions, callback){
 
   if(conditions){
     for(it in conditions){
-      cons += " " + conditions[it].col + " " + conditions[it].op + " ? and"
+
+      var op = conditions[it].op
+
+      if(!op)
+        op = "="
+
+      cons += " " + conditions[it].col + " " + op + " ? and"
       args.push(conditions[it].val)
     }
 
