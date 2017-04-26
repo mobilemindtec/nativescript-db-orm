@@ -242,7 +242,7 @@ Model.prototype._toInsertQuery = function(table, attrs){
             attrs[it.name] = attrs[it.name]
         }
 
-        args.push(attrs[it.name] || null)
+        args.push(attrs[it.name])
       }
     }catch(e){
       debug("Model.prototype._save error: " + e)
@@ -327,7 +327,7 @@ Model.prototype._toUpdateQuery = function(table, attrs){
           attrs[it.name] = attrs[it.name]
       }
 
-      args.push(attrs[it.name] || null)
+      args.push(attrs[it.name])
     }
   }
 
