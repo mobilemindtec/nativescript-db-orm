@@ -422,6 +422,8 @@ Model.prototype._all = function(table, attrs, options, callback){
   var sql = ""
   var args = []
 
+
+  debug("_all options=" + JSON.stringify(options))
   for(var i = 0; i < this.columns.length; i++)
     names += "c." + (this.columns[i].columnName || this.columns[i].name) + ","
 
@@ -455,7 +457,7 @@ Model.prototype._all = function(table, attrs, options, callback){
       sql += " " + joins[i] + " "
     }
 
-    if(conditions){
+    if(conditions && conditions.length > 0){
 
       if(!(Object.prototype.toString.call(conditions) === '[object Array]')){
         conditions = [ conditions ]
@@ -473,7 +475,7 @@ Model.prototype._all = function(table, attrs, options, callback){
           if(columnName.indexOf(".") == -1)
             columnName = "c." + columnName
 
-          
+
           if(!op)
             op = "="
 
