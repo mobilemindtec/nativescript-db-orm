@@ -232,14 +232,14 @@ Model.prototype._toInsertQuery = function(table, attrs){
 
         if(it.type == 'int'){
           if(typeof attrs[it.name] === 'string')
-            attrs[it.name] = parseInt(attrs[it.name])
+            attrs[it.name] = parseInt(attrs[it.name]) || 0
           else
-            attrs[it.name] = attrs[it.name]
+            attrs[it.name] = attrs[it.name] || 0
         }else if(it.type == 'decimal'){
           if(typeof attrs[it.name] === 'string')
-            attrs[it.name] = parseFloat(attrs[it.name])
+            attrs[it.name] = parseFloat(attrs[it.name]) || 0
           else
-            attrs[it.name] = attrs[it.name]
+            attrs[it.name] = attrs[it.name] || 0
         }
 
         args.push(attrs[it.name])
@@ -317,14 +317,14 @@ Model.prototype._toUpdateQuery = function(table, attrs){
 
       if(it.type == 'int'){
         if(typeof attrs[it.name] === "string")
-          attrs[it.name] = parseInt(attrs[it.name])
+          attrs[it.name] = parseInt(attrs[it.name]) || 0
         else
-          attrs[it.name] = attrs[it.name]
+          attrs[it.name] = attrs[it.name] || 0
       }else if(it.type == 'decimal'){
         if(typeof attrs[it.name] === "string")
-          attrs[it.name] = parseFloat(attrs[it.name])
+          attrs[it.name] = parseFloat(attrs[it.name]) || 0
         else
-          attrs[it.name] = attrs[it.name]
+          attrs[it.name] = attrs[it.name] || 0
       }
 
       args.push(attrs[it.name])
