@@ -814,6 +814,8 @@ Model.prototype._all = function(table, attrs, options, callback){
 
         if(conditions[it].native){
           cons += " " + conditions[it].native + " and"
+          if(conditions[it].val)
+            args.push(conditions[it].val)
         }else{
 
           var columnName = conditions[it].col
