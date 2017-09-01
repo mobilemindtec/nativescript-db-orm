@@ -203,10 +203,11 @@ function tableUpdate(model){
 
       for(var i = 0; i < model.columns.length; i++){
 
+        var column = model.columns[i]
+        
         if(column.list)
           continue
 
-        var column = model.columns[i]
         var columnName = column.columnName || column.name
         var columnFound = false
 
