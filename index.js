@@ -1081,6 +1081,21 @@ Model.prototype._set = function(params){
 
 // implements
 
+Model.prototype.columnSet = function(columnName, obj) {
+
+
+  for(var i = 0; i < this.columns.length; i++){
+    var col = this.columns[i]
+
+    if(col.name == 'columnName'){
+      for(var key in obj)
+        col[key] = obj[key]
+      break
+    }
+  }  
+
+}
+
 Model.prototype.persist = function(){
 
   var items = []
