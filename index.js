@@ -131,10 +131,9 @@ function tableCreate(model){
       query += " " + getColumnDefinitions(column)
 
 
-      if(j < model.columns.length - 1)
-        query += ", "
     }
-
+    
+    query = query.substring(0, query.length-2)
     query +=  " )"  
 
     debug("************ table create metadata begin *********************")
