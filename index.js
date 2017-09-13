@@ -117,10 +117,10 @@ function tableCreate(model){
 
       var column = model.columns[j]
 
-      query += column.columnName || column.name
-
       if(column.list)
         continue
+
+      query += column.columnName || column.name
 
       if(column.key){
         query += " integer primary key autoincrement, "
