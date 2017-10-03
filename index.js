@@ -4,6 +4,13 @@ var moment = require("moment")
 var dbName
 var isDebug = false
 var LOAD_CACHE = {}
+var MAX_CACHE_LIFE_TIME = 2000
+
+var DATETIME_FORMAT = 'YYYY-MM-DD HH:mm:ss.SSS'
+var DATE_FORMAT = 'YYYY-MM-DD'
+
+var SQL_DATETIME_FORMAT = '%Y-%m-%d %H:%M:%S.%f'
+var SQL_DATE_FORMAT = '%Y-%m-%d'
 
 function debug(text){
   if(isDebug)
@@ -112,15 +119,16 @@ function tableCreate(model){
 
   
     var query = "create table " + model.tableName + " ( "
-
     for(var j = 0; j < model.columns.length; j++){
 
       var column = model.columns[j]
 
+      if(column.list){
+        continue
+      }
+
       query += column.columnName || column.name
 
-      if(column.list)
-        continue
 
       if(column.key){
         query += " integer primary key autoincrement, "
@@ -131,10 +139,10 @@ function tableCreate(model){
       query += " " + getColumnDefinitions(column)
 
 
-      if(j < model.columns.length - 1)
-        query += ", "
+      query += ", "
     }
 
+    query = query.substring(0, query.length-2)
     query +=  " )"  
 
     debug("************ table create metadata begin *********************")
@@ -203,10 +211,11 @@ function tableUpdate(model){
 
       for(var i = 0; i < model.columns.length; i++){
 
+        var column = model.columns[i]
+        
         if(column.list)
           continue
 
-        var column = model.columns[i]
         var columnName = column.columnName || column.name
         var columnFound = false
 
@@ -337,6 +346,9 @@ function init (args) {
   var forceDbReset = args.reset
   var models = args.models
 
+  if(args.maxCacheLifeTime && args.maxCacheLifeTime > 0)
+    MAX_CACHE_LIFE_TIME = args.maxCacheLifeTime
+
   if(args.debug)
     onDebug(true)
 
@@ -421,6 +433,12 @@ function execute(sql, params, callback){
 
   });
 }
+
+Model.DATE_FORMAT = DATE_FORMAT
+Model.DATETIME_FORMAT = DATETIME_FORMAT
+
+Model.SQL_DATE_FORMAT = SQL_DATE_FORMAT
+Model.SQL_DATETIME_FORMAT = SQL_DATETIME_FORMAT
 
 Model.prototype.foreach = foreach
 
@@ -531,13 +549,20 @@ Model.prototype._toInsertQuery = function(table, attrs){
 
     try{
 
-      if(it.type == 'date'){
+      if(it.type == 'datetime'){
         if(attrs[it.name]){
-          var val = attrs[it.name] && moment(attrs[it.name]).isValid() ? moment(attrs[it.name]).format('YYYY-MM-DD HH:mm:ss.SSS') : null
+          var val = attrs[it.name] && moment(attrs[it.name]).isValid() ? moment(attrs[it.name]).format(DATETIME_FORMAT) : null
           args.push(val)
         }else{
           args.push(null)
         }
+      } else if(it.type == 'date'){
+        if(attrs[it.name]){
+          var val = attrs[it.name] && moment(attrs[it.name]).isValid() ? moment(attrs[it.name]).format(DATE_FORMAT) : null
+          args.push(val)
+        }else{
+          args.push(null)
+        }        
       }else if(it.type == 'boolean'){
         args.push(attrs[it.name] ? 1 : 0)
       }else if(typeof it.type === "function"){
@@ -617,9 +642,16 @@ Model.prototype._toUpdateQuery = function(table, attrs){
     names += (it.columnName || it.name) + " = ?,"
     //values += "?,"
 
-    if(it.type == 'date'){
+    if(it.type == 'datetime'){
       if(attrs[it.name]){
-        var val = attrs[it.name] && moment(attrs[it.name]).isValid() ? moment(attrs[it.name]).format('YYYY-MM-DD HH:mm:ss.SSS') : null
+        var val = attrs[it.name] && moment(attrs[it.name]).isValid() ? moment(attrs[it.name]).format(DATETIME_FORMAT) : null
+        args.push(val)
+      }else{
+        args.push(null)
+      }
+    } else if(it.type == 'date'){
+      if(attrs[it.name]){
+        var val = attrs[it.name] && moment(attrs[it.name]).isValid() ? moment(attrs[it.name]).format(DATE_FORMAT) : null
         args.push(val)
       }else{
         args.push(null)
@@ -729,6 +761,14 @@ Model.prototype._count = function(table, callback){
   get("select count(id) from " + table, [], callback)
 }
 
+Model.prototype._exists = function(table, id, callback){
+  get("select count(id) from " + table + " where id = ? ", [id], callback)
+}
+
+Model.prototype._existsByServerId = function(table, id, callback){
+  get("select count(id) from " + table + " where serverId = ?", [id], callback)
+}
+
 Model.prototype._get = function(table, attrs, conditions, callback){
   var names = ""
   var cons = ""
@@ -814,6 +854,10 @@ Model.prototype._all = function(table, attrs, options, callback){
 
         if(conditions[it].native){
           cons += " " + conditions[it].native + " and"
+
+          if(conditions[it].val != undefined)
+            args.push(conditions[it].val)
+          
         }else{
 
           var columnName = conditions[it].col
@@ -862,21 +906,33 @@ Model.prototype._removeBy = function(table, attrs, conditions, callback){
 
   sql = " delete from " + table
 
-  if(conditions){
+  if(conditions && conditions.length > 0){
+
+    if(!(Object.prototype.toString.call(conditions) === '[object Array]')){
+      conditions = [ conditions ]
+    }
+
     for(it in conditions){
 
-      var op = conditions[it].op
+      if(conditions[it].native){
+        cons += " " + conditions[it].native + " and"
+      }else{
 
-      if(!op)
-        op = "="
+        var columnName = conditions[it].col
+        var op = conditions[it].op
 
-      cons += " " + conditions[it].col + " " + op + " ? and"
-      args.push(conditions[it].val)
+        if(!op)
+          op = "="
+
+        cons += " " + columnName + " " + op + " ? and"
+        args.push(conditions[it].val)
+
+      }
     }
 
     cons = cons.substring(0, cons.length-3)
     sql += " where " + cons
-  }
+  }  
 
   execute(sql, args, callback)
 }
@@ -938,8 +994,11 @@ Model.prototype._resultToJson = function(item, callback, onItemConverter){
         
         var value = item[i++]
 
-        if(it.type == 'date' &&  value && moment(value, 'YYYY-MM-DD HH:mm:ss.SSS').isValid()){
-          opts[it.name] = moment(value, 'YYYY-MM-DD HH:mm:ss.SSS').toDate()
+        if(it.type == 'datetime' &&  value && moment(value, DATETIME_FORMAT).isValid()){
+          opts[it.name] = moment(value, DATETIME_FORMAT).toDate()
+          next()
+        } else if(it.type == 'date' &&  value && moment(value, DATE_FORMAT).isValid()){
+          opts[it.name] = moment(value, DATE_FORMAT).toDate()
           next()
         }else if(it.type == 'boolean'){
           opts[it.name] = value && value == 1 ? true : false
@@ -956,16 +1015,24 @@ Model.prototype._resultToJson = function(item, callback, onItemConverter){
             
             if(it.eager){
 
+              debug("** eager " + it.name + ", key = " + key + ", value = " + value + ", cache = " + LOAD_CACHE[key])
+
               
               if(LOAD_CACHE[key]){
+                var diff = new Date().getTime() - LOAD_CACHE[key].lifetime.getTime()
+                if(diff > MAX_CACHE_LIFE_TIME)
+                  LOAD_CACHE[key] = undefined
+              }
+
+              if(LOAD_CACHE[key]){
                 
-                opts[it.name] = LOAD_CACHE[key]
+                opts[it.name] = LOAD_CACHE[key].item
                 next()                
 
               }else{
 
                 type.get(value, function(result){
-                  LOAD_CACHE[key] = result
+                  LOAD_CACHE[key] = { item: result, lifetime: new Date() }
                   opts[it.name] = result
                   next()
                 })
@@ -975,7 +1042,7 @@ Model.prototype._resultToJson = function(item, callback, onItemConverter){
             }else{
               opts[it.name] = type
               opts[it.name][keyName] = value
-              LOAD_CACHE[key] = opts[it.name]
+              LOAD_CACHE[key] = { item: opts[it.name], lifetime: new Date() }
               next()
             }
           }else{
@@ -993,7 +1060,7 @@ Model.prototype._resultToJson = function(item, callback, onItemConverter){
         var key = itemConverted.tableName + "#" + itemConverted[getModelKeyName(itemConverted)]
 
         if(!LOAD_CACHE[key]){
-          LOAD_CACHE[key] = itemConverted
+          LOAD_CACHE[key] = { item: itemConverted, lifetime: new Date() }
         }
 
         foreach(self.columns, function(it, next){
@@ -1002,7 +1069,7 @@ Model.prototype._resultToJson = function(item, callback, onItemConverter){
             var type = new it.type()
             var keyName = getModelKeyName(type)
 
-            if(it.eager && !opts[it.name]){
+            if(it.eager && Object.prototype.toString.call( opts[it.name] ) !== '[object Array]'){
               type.filter([{ col: it.relationColumn, val: opts[keyName]  }], function(results){
               
                 opts[it.name] = results
@@ -1078,19 +1145,42 @@ Model.prototype._set = function(params){
 
 // implements
 
+Model.prototype.columnSet = function(columnName, obj) {
+
+
+  for(var i = 0; i < this.columns.length; i++){
+    var col = this.columns[i]
+
+    if(col.name == 'columnName'){
+      for(var key in obj)
+        col[key] = obj[key]
+      break
+    }
+  }  
+
+}
+
 Model.prototype.persist = function(){
+
+  debug(" ORM persist ")
 
   var items = []
   var list = []
   var that = this
 
 
+
   for(var i = 0; i < this.columns.length; i++){
     var col = this.columns[i]
+
+
     if(typeof col.type === 'function'){
       if(col.cascade && this[col.name]){
+        
+        
         if(col.list){
-          for(j in this[col.name]){
+
+          for(var j in this[col.name]){
             var it = this[col.name][j]
 
             it[col.relationName] = this
@@ -1098,6 +1188,7 @@ Model.prototype.persist = function(){
             list.push(it)
           }
         }else{
+          this[col.name][col.relationName] = this
           items.push(this[col.name])
         }
       }
@@ -1106,6 +1197,9 @@ Model.prototype.persist = function(){
   }
 
   items.push(this)
+
+  debug(" ORM persist items = " + items.length)
+  debug(" ORM persist list = " + list.length)
 
   return this.saveOrUpdateAll(items).then(function(){
     return that.saveOrUpdateAll(list)
@@ -1197,7 +1291,7 @@ Model.prototype.saveOrUpdateAll = function(items){
           return        
       }
 
-      item.get(item[keyName], function(result){
+      item.exists(item[keyName], function(result){
         if(result){
 
           item.update(function(err){
@@ -1335,6 +1429,18 @@ Model.prototype.removeByFilter = function(conditions, callback){
 
 Model.prototype.count = function(callback){
   Model.prototype._count.call(this, this.tableName, callback)
+}
+
+Model.prototype.exists = function(id, callback){
+  Model.prototype._exists.call(this, this.tableName, id, function(err, count){
+    callback(count > 0)
+  }) 
+}
+
+Model.prototype.existsByServerId = function(id, callback){
+  Model.prototype._existsByServerId.call(this, this.tableName, id, function(err, count){
+    callback(count > 0)
+  }) 
 }
 
 Model.prototype.get = function(id, callback){
