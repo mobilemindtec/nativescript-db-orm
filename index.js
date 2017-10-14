@@ -1,6 +1,6 @@
 var Sqlite = require( "nativescript-sqlite" );
 var dbORM = require("./orm");
-var moment = require("moment")
+var moment = require("moment-mini")
 var dbName
 var isDebug = false
 var LOAD_CACHE = {}
