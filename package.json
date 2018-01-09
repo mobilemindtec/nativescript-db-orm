@@ -1,9 +1,8 @@
 { "name" : "nativescript-db-orm",
   "main" : "index.js",
   "version": "0.0.1",
-
   "dependencies": {
-  	"nativescript-sqlite": "^1.1.2",
+  	"nativescript-sqlite": "^2.0.1",
   	"moment-mini": "^2.18.1"
   }
 }

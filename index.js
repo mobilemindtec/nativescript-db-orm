@@ -1142,6 +1142,8 @@ Model.prototype._set = function(params){
   Model.prototype._init.call(this, this, this.attrs)
 }
 
+Model.prototype.set = Model.prototype._set
+
 
 // implements
 
