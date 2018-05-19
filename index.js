@@ -322,7 +322,7 @@ function getTableMetadata(model) {
         }
       }
 
-      debug("** columns = " + JSON.stringify(columns))
+      //debug("** columns = " + JSON.stringify(columns))
 
       accept(columns)
 
