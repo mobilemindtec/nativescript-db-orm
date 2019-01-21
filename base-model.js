@@ -505,4 +505,4 @@ BaseModel = (function(superClass) {
 
 })(Model);
 
-module.exports = BaseModel;
+exports.BaseModel = BaseModel;
