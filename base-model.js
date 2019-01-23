@@ -501,6 +501,10 @@ BaseModel = (function(superClass) {
     });
   };
 
+  BaseModel.prototype.foreach = function(items, each) {
+    return BaseModel.__super__.foreach.call(items, each);
+  }
+
   return BaseModel;
 
 })(Model);
