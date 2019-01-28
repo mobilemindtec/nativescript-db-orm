@@ -23,7 +23,7 @@ BaseModel = (function(superClass) {
     }
   };
 
-  BaseModel.prototype.fromJson = function(json, model, allString) {
+  BaseModel.prototype.fromJson = function(json, model) {
     var col, i, len, m, obj, ref, value;
     if (!json) {
       return void 0;
@@ -60,9 +60,6 @@ BaseModel = (function(superClass) {
         } else {
           obj[col.name] = value;
         }
-        if (allString) {
-          obj[col.name] = obj[col.name] + "";
-        }
       }
     }
     return obj;
@@ -82,7 +79,7 @@ BaseModel = (function(superClass) {
     return items;
   };
 
-  BaseModel.prototype.toJson = function() {
+  BaseModel.prototype.toJson = function(allString) {
     var col, i, it, j, json, len, len1, ref, ref1;
     json = {};
     ref = this.columns;
@@ -122,19 +119,19 @@ BaseModel = (function(superClass) {
             }
           } else if (col.type === 'int') {
             if (this[col.name] === void 0) {
-              it[col.json] = "0";
+              it[col.json] = 0;
             } else if (typeof this[col.name] === 'string') {
-              it[col.json] = ("" + (parseInt(this[col.name]) || 0)) || "0";
+              it[col.json] = parseInt(this[col.name]) || 0;
             } else {
-              it[col.json] = this[col.name] + "";
+              it[col.json] = this[col.name];
             }
           } else if (col.type === 'decimal') {
             if (this[col.name] === void 0) {
-              it[col.json] = "0.0";
+              it[col.json] = 0.0;
             } else if (typeof this[col.name] === 'string') {
-              it[col.json] = ("" + (parseFloat(this[col.name]) || 0.0)) || "0.0";
+              it[col.json] = parseFloat(this[col.name]) || 0.0;
             } else {
-              it[col.json] = this[col.name] + "";
+              it[col.json] = this[col.name];
             }
           } else if (col.type === "string") {
             it[col.json] = this[col.name] || "";
