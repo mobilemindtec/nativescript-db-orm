@@ -73,7 +73,7 @@ function createDatabase (callback) {
       if(db.isOpen())
         db.close()
       
-      console.log("db close? " + (db.isOpen() ? "No" : "Yes"))
+      debug("db close? " + (db.isOpen() ? "No" : "Yes"))
     }
   })
 }
