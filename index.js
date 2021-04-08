@@ -63,12 +63,18 @@ function ORM(){
 function createDatabase (callback) {
   var sqlite = new Sqlite(dbName, function(err, db) {
 
-    if(err)
-      debug("Erro ao conectar com o banco de dados. Detalhes: " + err)
+    if(err){
+      console.log("Erro ao conectar com o banco de dados "+dbName+". Detalhes: " + err)
+    }else{
+      debug("db open? " + (db.isOpen() ? "Yes" : "No"));
 
-    callback(db)
+      callback(db)
 
-    db.close()
+      if(db.isOpen())
+        db.close()
+      
+      debug("db close? " + (db.isOpen() ? "No" : "Yes"))
+    }
   })
 }
 
@@ -429,7 +435,10 @@ function execute(sql, params, callback){
 
     debug('execute ' + sql + "  values " + JSON.stringify(params))
 
-    db.execSQL(sql, params, callback)
+    db.execSQL(sql, params, function(args1, args2){
+      db.close()
+      callback(args1, args2)
+    });
 
   });
 }
@@ -458,6 +467,8 @@ Model.prototype.executeNativeResultsTransformer = function(sql, params, callback
 
     db.all(sql, params, function(err, results){
 
+      db.close()
+
       if(err){
         console.log("** executeNativeResultsTransformer: error on run sql: " + err)
       }else{
@@ -480,6 +491,8 @@ Model.prototype.executeNativeResultTransformer = function(sql, params, callback)
 
     db.get(sql, params, function(err, result){
 
+      db.close()
+
       if(err){
         console.log("** executeNativeResultTransformer: error on run sql: " + err)
       }else{
@@ -500,7 +513,11 @@ function get(sql, params, callback){
 
     debug('execute ' + sql + "  values " + JSON.stringify(params))
 
-    db.get(sql, params, callback)
+
+    db.get(sql, params, function(args1, args2){
+      db.close()
+      callback(args1, args2)
+    })
 
   });
 }
@@ -512,7 +529,10 @@ function all(sql, params, callback){
 
     debug('execute ' + sql + "  values " + JSON.stringify(params))
 
-    db.all(sql, params, callback)
+    db.all(sql, params, function(args1, args2){
+      db.close()
+      callback(args1, args2)
+    })
 
   });
 }
@@ -721,7 +741,8 @@ Model.prototype._save = function(table, attrs, callback){
       attrs[keyName] = id
     }
 
-    debug('save callback in model. err=' + err)
+    if(err)
+      debug('error on save model ' + that.tableName + ': ' + err)
 
 
 
@@ -1333,7 +1354,7 @@ Model.prototype.save = function(callback){
     if(err){
       debug("Model.prototype.save error: " + err)
       if(callback)
-        callback(err)
+        return callback(err)
     }
 
 
