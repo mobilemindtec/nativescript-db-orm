@@ -192,7 +192,7 @@ function tableExists(model) {
         return reject(err)
       }
 
-      console.log("** find by table " + tableName + " - result: " + result)
+      debug("** find by table " + tableName + " - result: " + result)
 
       accept(result == tableName)
 
