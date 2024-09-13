@@ -901,7 +901,10 @@ Model.prototype._all = function(table, attrs, options, callback){
     }
 
     if(sort){
-      sql += " order by " + sort
+      if(sort.indexOf("(") > -1)
+        sql += " order by " + sort
+      else
+        sql += " order by c." + sort
     }
 
     if(order){
